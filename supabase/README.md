@@ -53,6 +53,7 @@ Lineage tables, which sit outside the star: `etl_run_log`, `dq_source_counts`, `
 * `migrations/01_star_schema.sql`: tables, keys, indexes, RLS
 * `migrations/02_kpi_views.sql`: KPI views
 * `migrations/03_advisor_fixes.sql`: extra FK index
+* `migrations/04_dashboard_api.sql`: read-only `public.rockshell_dashboard()` function for the web dashboard
 * `loader/build_batches.py`: extracts the cleaned rows from the local DW and writes batched INSERT files to `data_batches/` (loaded through the Supabase MCP `execute_sql`)
 * `loader/source_manifest.json`: source row counts and totals used for verification
 * `loader/make_star_erd.py`: draws `docs/star_erd.png`
