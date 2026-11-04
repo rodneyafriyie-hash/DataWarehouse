@@ -1,0 +1,8 @@
+INSERT INTO rockshell.dim_project (project_key, project_id, project_name, project_type, town, region, client_name, project_manager, project_status, contract_value_ghs, start_date, planned_end_date, actual_end_date, planned_pct_complete, actual_pct_complete, progress_as_of, valid_from, valid_to, is_current) VALUES
+(1,'P001','Project A','Commercial','Accra','Greater Accra','Client One Holdings','PM Alpha','Active',5900000.00,'2024-06-03','2027-09-24',NULL,81.80,70.00,'2026-10-30','1900-01-01','9999-12-31',TRUE),
+(2,'P002','Project B','Residential','Kumasi','Ashanti','Client Two Estates','PM Bravo','Active',3750000.00,'2023-11-06','2025-08-29',NULL,100.00,100.00,'2025-09-26','1900-01-01','2025-09-25',FALSE),
+(3,'P002','Project B','Residential','Kumasi','Ashanti','Client Two Estates','PM Bravo','Completed',3750000.00,'2023-11-06','2025-08-29','2025-09-26',100.00,100.00,'2025-09-26','2025-09-26','9999-12-31',TRUE),
+(4,'P003','Project C','Infrastructure','Tamale','Northern','Client Three Assembly (public body)','PM Charlie','Active',12400000.00,'2024-01-08','2026-12-18',NULL,99.40,82.00,'2026-10-30','1900-01-01','2025-03-02',FALSE),
+(5,'P003','Project C','Infrastructure','Tamale','Northern','Client Three Assembly (public body)','PM Delta','Active',12400000.00,'2024-01-08','2026-12-18',NULL,99.40,82.00,'2026-10-30','2025-03-03','9999-12-31',TRUE),
+(6,'P004','Project D','Commercial','Takoradi','Western','Client One Holdings','PM Echo','Active',8000000.00,'2025-02-03','2027-03-26',NULL,90.70,72.00,'2026-10-30','1900-01-01','9999-12-31',TRUE),
+(7,'P005','Project E','Residential','Accra','Greater Accra','Client Two Estates','PM Foxtrot','Active',2900000.00,'2025-09-01','2027-08-27',NULL,62.60,50.00,'2026-10-30','1900-01-01','9999-12-31',TRUE);

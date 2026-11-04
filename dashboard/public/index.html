@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rockshell International Ltd. Data Warehouse</title>
+<meta name="description" content="Project cost, earned value, supplier and data-quality dashboard on a star-schema data warehouse.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='%231f2a44'/><path d='M14 46 L32 14 L50 46 Z' fill='%23f28c28'/></svg>">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">▲</div>
+    <div>
+      <h1>Rockshell International Ltd. Data Warehouse</h1>
+      <p class="sub">Project cost &amp; performance · star schema on PostgreSQL (Supabase)</p>
+    </div>
+  </div>
+  <div class="controls">
+    <label for="projectFilter">Project</label>
+    <select id="projectFilter"><option value="ALL">All projects</option></select>
+  </div>
+</header>
+<nav class="tabs" id="tabs">
+  <button data-page="overview" class="active">Overview</button>
+  <button data-page="budget">Budget &amp; EVM</button>
+  <button data-page="suppliers">Suppliers</button>
+  <button data-page="labour">Labour</button>
+  <button data-page="clients">Clients</button>
+  <button data-page="dq">Data Quality</button>
+  <button data-page="star">Star Schema</button>
+</nav>
+<main>
+  <div id="loading" class="loading"><div class="spinner"></div><p>Loading live data from the warehouse…</p></div>
+  <div id="error" class="error hidden"></div>
+
+  <section id="page-overview" class="page">
+    <div class="cards" id="kpiCards"></div>
+    <div class="grid-2">
+      <div class="panel wide"><h2>Monthly actual cost by category</h2><p class="hint" id="trendHint"></p><div class="chart tall"><canvas id="trendChart"></canvas></div></div>
+    </div>
+    <div class="panel"><h2>Project health</h2><div class="table-wrap"><table id="healthTable"></table></div></div>
+  </section>
+
+  <section id="page-budget" class="page hidden">
+    <div class="grid-2">
+      <div class="panel"><h2>Budget vs actual by project</h2><div class="chart"><canvas id="bvaChart"></canvas></div></div>
+      <div class="panel"><h2>Budget vs actual by cost category</h2><p class="hint" id="catHint"></p><div class="chart"><canvas id="catChart"></canvas></div></div>
+    </div>
+    <div class="panel"><h2>Earned value analysis</h2>
+      <p class="hint">EV = BAC × % complete · CPI = EV ÷ AC · SPI = actual % ÷ planned % · EAC = BAC ÷ CPI · VAC = BAC − EAC · RAG: CPI &lt; 0.90 Red, &lt; 0.97 Amber</p>
+      <div class="table-wrap"><table id="evmTable"></table></div></div>
+    <div class="panel"><h2>Cost category detail</h2><div class="table-wrap"><table id="catTable"></table></div></div>
+  </section>
+
+  <section id="page-suppliers" class="page hidden">
+    <div class="cards" id="supplierCards"></div>
+    <div class="grid-2">
+      <div class="panel"><h2>On-time delivery by supplier</h2><div class="chart"><canvas id="onTimeChart"></canvas></div></div>
+      <div class="panel"><h2>Price premium vs cheapest supplier</h2><p class="hint">Average price per standard unit, by material · cheapest supplier = 100</p><div class="chart"><canvas id="premiumChart"></canvas></div></div>
+    </div>
+    <div class="panel"><h2>Supplier scorecard</h2><div class="table-wrap"><table id="scoreTable"></table></div></div>
+    <div class="panel"><h2>Price comparison by material</h2><div class="table-wrap"><table id="priceTable"></table></div></div>
+  </section>
+
+  <section id="page-labour" class="page hidden">
+    <div class="cards" id="labourCards"></div>
+    <div class="grid-2">
+      <div class="panel"><h2>Monthly labour cost by department</h2><p class="hint" id="labourHint"></p><div class="chart"><canvas id="labourChart"></canvas></div></div>
+      <div class="panel"><h2>Hours: normal vs overtime</h2><div class="chart"><canvas id="hoursChart"></canvas></div></div>
+    </div>
+    <div class="panel"><h2>Labour cost by role (all projects)</h2><div class="table-wrap"><table id="roleTable"></table></div></div>
+  </section>
+
+  <section id="page-clients" class="page hidden">
+    <div class="grid-2">
+      <div class="panel"><h2>Actual cost by client</h2><div class="chart"><canvas id="clientChart"></canvas></div></div>
+      <div class="panel"><h2>Client budget vs actual</h2><div class="table-wrap"><table id="clientTable"></table></div></div>
+    </div>
+    <div class="panel"><h2>Projects by client</h2><div class="table-wrap"><table id="clientProjTable"></table></div></div>
+  </section>
+
+  <section id="page-dq" class="page hidden">
+    <div class="cards" id="dqCards"></div>
+    <div class="panel"><h2>Reconciliation checks</h2><p class="hint">PASS = warehouse total equals cleansed source total · INFO = explained cross-check</p><div class="table-wrap"><table id="reconTable"></table></div></div>
+    <div class="panel"><h2>Before / after cleansing by source</h2><div class="table-wrap"><table id="srcTable"></table></div></div>
+    <div class="panel"><h2>Cleansing rules applied (R1–R7)</h2><div class="table-wrap"><table id="rulesTable"></table></div></div>
+    <div class="grid-2">
+      <div class="panel"><h2>ETL run log</h2><div class="table-wrap"><table id="runTable"></table></div></div>
+      <div class="panel"><h2>Star-schema load check</h2><p class="hint">Live fact totals in the cloud warehouse vs ETL reconciliation totals</p><div class="table-wrap"><table id="loadTable"></table></div></div>
+    </div>
+  </section>
+
+  <section id="page-star" class="page hidden">
+    <div class="panel"><h2>Star schema</h2>
+      <p class="hint">One central fact table (one row per project cost transaction) joined directly to seven dimensions, with no snowflaking. GL postings and approved budgets are the book of record for totals. Purchase-order and timesheet lines add supplier, material, delivery and hours detail.</p>
+      <div class="erd"><img src="/erd.png" alt="Star schema diagram: fact_project_cost with dimensions date, project, client, supplier, material, cost category and employee"></div>
+    </div>
+    <div class="grid-2">
+      <div class="panel"><h2>Table row counts</h2><div class="table-wrap"><table id="countTable"></table></div></div>
+      <div class="panel"><h2>Why a star schema?</h2>
+        <ul class="why">
+          <li><b>Simple joins:</b> every KPI is one join from the fact table, so queries are fast and easy to explain.</li>
+          <li><b>Conformed dimensions:</b> project, supplier, material, employee, client, cost category and date are shared by every measure.</li>
+          <li><b>History kept:</b> project manager/status and employee role changes are tracked as Slowly Changing Dimensions (Type 2).</li>
+          <li><b>Budget vs actual in one place:</b> a scenario column (ACTUAL / BUDGET) puts both on the same grain.</li>
+          <li><b>Unknown members (key 0):</b> every foreign key is filled, so no rows are lost in joins.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</main>
+<footer>
+  <span id="sourceBadge" class="badge">●</span>
+  <span id="footerText">Synthetic demonstration data for coursework.</span>
+</footer>
+<script src="/chart.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

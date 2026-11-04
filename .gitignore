@@ -1,0 +1,8 @@
+.deploy/
+dashboard/.deploy/
+.env
+*.env
+.dev.vars
+node_modules/
+.wrangler/
+__pycache__/
