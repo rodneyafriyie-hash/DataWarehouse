@@ -1,0 +1,20 @@
+name = "rockshell-dw"
+main = "src/worker.js"
+compatibility_date = "2026-10-01"
+# Modules are imported from ../public via the build step below (copy into src/ or adjust paths).
+# Secrets: wrangler secret put SUPABASE_KEY   (the project's publishable key; never commit it)
+[vars]
+SUPABASE_URL = "https://kthdkdbrokrcokngnfpy.supabase.co"
+
+[observability]
+enabled = true
+
+[[rules]]
+type = "Text"
+globs = ["**/*.html", "**/*.css", "**/*.txt"]
+fallthrough = true
+
+[[rules]]
+type = "Data"
+globs = ["**/*.png"]
+fallthrough = true

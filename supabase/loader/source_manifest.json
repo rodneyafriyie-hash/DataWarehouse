@@ -1,0 +1,25 @@
+{
+  "dim_date": 1827,
+  "dim_client": 4,
+  "dim_project": 7,
+  "dim_supplier": 8,
+  "dim_material": 6,
+  "dim_cost_category": 5,
+  "dim_employee": 76,
+  "fact:GL": 3520,
+  "fact:PO": 1431,
+  "fact:PAYROLL": 22829,
+  "fact:BUDGET": 30,
+  "fact_project_cost": 27810,
+  "etl_run_log": 3,
+  "dq_source_counts": 24,
+  "dq_issue": 99,
+  "dq_rejected_row": 96,
+  "reconciliation": 21,
+  "fact_sums": {
+    "GL": "22444517.19",
+    "PO": "9279219.57",
+    "PAYROLL": "5670935.10",
+    "BUDGET": "37400000.00"
+  }
+}
