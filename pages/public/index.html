@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rockshell International Ltd. Data Warehouse</title>
+<meta name="description" content="Project cost, supplier and data-quality reporting from the Rockshell data warehouse.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='%231f2a44'/><text x='32' y='44' font-size='34' text-anchor='middle' fill='white' font-family='Arial' font-weight='700'>R</text></svg>">
+<link rel="stylesheet" href="/styles.css?v=2">
+</head>
+<body>
+<header class="topbar">
+  <div>
+    <h1>Rockshell International Ltd. Data Warehouse</h1>
+    <p class="sub">Project cost and performance report</p>
+  </div>
+  <p class="asof" id="asof"></p>
+</header>
+<nav class="tabs" id="tabs">
+  <button data-page="overview" class="active">Overview</button>
+  <button data-page="projects">Projects</button>
+  <button data-page="suppliers">Suppliers</button>
+  <button data-page="dq">Data Quality</button>
+  <button data-page="star">Star Schema</button>
+</nav>
+<main>
+  <div id="loading" class="loading"><div class="spinner"></div><p>Loading data from the warehouse…</p></div>
+  <div id="error" class="error hidden"></div>
+
+  <section id="page-overview" class="page">
+    <div class="cards" id="ovCards"></div>
+    <div class="grid-2">
+      <div class="panel"><h2 id="cpiTitle"></h2><p class="hint">Value of work completed for every GH₵1 spent. Below GH₵1.00 means the project is overspending.</p><div class="chart"><canvas id="cpiChart"></canvas></div></div>
+      <div class="panel"><h2 id="trendTitle"></h2><p class="hint">Total actual cost per month, all projects</p><div class="chart"><canvas id="trendChart"></canvas></div></div>
+    </div>
+    <div class="panel"><h2>Project summary</h2><div class="table-wrap"><table id="ovTable"></table></div></div>
+  </section>
+
+  <section id="page-projects" class="page hidden">
+    <div class="filterbar"><label for="projectFilter">Project</label><select id="projectFilter"></select></div>
+    <div class="cards" id="prCards"></div>
+    <div class="grid-2">
+      <div class="panel"><h2 id="vacTitle"></h2><p class="hint">Forecast final cost minus approved budget. Positive = over budget.</p><div class="chart"><canvas id="vacChart"></canvas></div></div>
+      <div class="panel"><h2 id="catTitle"></h2><p class="hint" id="catHint"></p><div class="chart"><canvas id="catChart"></canvas></div></div>
+    </div>
+    <div class="panel"><h2>Earned value by project</h2>
+      <p class="hint">CPI = earned value ÷ actual cost. Forecast final cost (EAC) = budget ÷ CPI. Status: CPI below 0.90 is Red, below 0.97 is Amber.</p>
+      <div class="table-wrap"><table id="evmTable"></table></div></div>
+  </section>
+
+  <section id="page-suppliers" class="page hidden">
+    <div class="cards" id="spCards"></div>
+    <div class="grid-2">
+      <div class="panel"><h2 id="onTimeTitle"></h2><p class="hint">Share of purchase-order lines delivered on or before the promised date</p><div class="chart"><canvas id="onTimeChart"></canvas></div></div>
+      <div class="panel"><h2 id="premTitle"></h2><p class="hint">How much more each supplier charges than the cheapest supplier for the same material</p><div class="chart"><canvas id="premChart"></canvas></div></div>
+    </div>
+    <div class="panel"><h2>Supplier scorecard</h2><div class="table-wrap"><table id="scoreTable"></table></div></div>
+  </section>
+
+  <section id="page-dq" class="page hidden">
+    <div class="cards" id="dqCards"></div>
+    <div class="grid-2">
+      <div class="panel"><h2 id="dqTitle"></h2><p class="hint">Rows removed, repaired or rejected during cleansing, by source system</p><div class="chart"><canvas id="dqChart"></canvas></div></div>
+      <div class="panel"><h2>Every warehouse total matches its source</h2><p class="hint">Reconciliation checks from the latest load</p><div class="table-wrap"><table id="reconTable"></table></div></div>
+    </div>
+    <div class="panel"><h2>Cleansing rules applied</h2><div class="table-wrap"><table id="rulesTable"></table></div></div>
+    <div class="panel"><h2>Load history</h2><div class="table-wrap"><table id="runTable"></table></div></div>
+  </section>
+
+  <section id="page-star" class="page hidden">
+    <div class="panel"><h2>One fact table, seven dimensions</h2>
+      <p class="hint">Each row of the fact table is one project cost transaction. Every dimension joins directly to it, with no snowflaking.</p>
+      <div class="erd"><img src="/erd.png" alt="Star schema diagram: fact_project_cost joined to date, project, client, supplier, material, cost category and employee dimensions"></div>
+    </div>
+    <div class="grid-2">
+      <div class="panel"><h2>Tables and row counts</h2><div class="table-wrap"><table id="countTable"></table></div></div>
+      <div class="panel"><h2>Why a star schema</h2>
+        <ul class="why">
+          <li>Every report is one join away from the fact table, so it is simple and fast.</li>
+          <li>Project, supplier, material, employee, client, cost category and date are shared across all measures.</li>
+          <li>Changes to project managers and employee roles are kept as history (SCD Type 2).</li>
+          <li>Budget and actual cost sit in the same table, marked by a scenario column.</li>
+          <li>An "unknown" row (key 0) in each dimension means no fact row is lost in a join.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</main>
+<footer id="footer"></footer>
+<script src="/chart.js"></script>
+<script src="/app.js?v=2"></script>
+</body>
+</html>
