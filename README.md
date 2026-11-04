@@ -14,7 +14,7 @@ Star schema on Supabase PostgreSQL 17, schema `rockshell` (private)
       ▼
 Cloudflare Worker: serves the dashboard and proxies the function (key kept as a Worker secret, 60 s edge cache, offline fallback)
       ▼
-Browser dashboard (Chart.js, navy/orange, mobile friendly)
+Browser dashboard (Chart.js, simple report style, mobile friendly)
 ```
 
 ![Star schema](docs/star_erd.png)
@@ -23,7 +23,9 @@ Browser dashboard (Chart.js, navy/orange, mobile friendly)
 `fact_project_cost` has one row per project cost transaction (GL postings, PO lines, timesheet lines and budget lines, told apart by `record_source` and `scenario`). It joins directly to seven dimensions: date, project, client, supplier, material, cost category and employee. There is no snowflaking. Project and employee are SCD Type 2. Totals use only the book-of-record rows (GL and budget), so the PO and payroll detail is never double-counted. See [supabase/README.md](supabase/README.md) for the grain, the view-to-KPI mapping and the verified figures.
 
 ## Dashboard pages
-Overview · Budget & EVM (CPI, SPI, EAC, VAC with RAG) · Suppliers (price premium and on-time scorecard) · Labour · Clients · Data Quality (132 duplicates removed, 145 IDs recovered, 32 rejected, 5/5 reconciliations) · Star Schema
+Overview (headline KPIs, CPI by project, monthly spend) · Projects (forecast over/under budget, category spend, earned value table; project filter) · Suppliers (on-time and price premium) · Data Quality (132 duplicates removed, 145 IDs recovered, 32 rejected, 5/5 reconciliations) · Star Schema
+
+Design: flat report style with one main colour (navy) and orange only for the problem item, direct data labels, and takeaway chart titles.
 
 ## Security
 * The raw tables live in schema `rockshell`, which is not exposed by the Supabase Data API. RLS is on with no policies, and anon and authenticated have no grants.

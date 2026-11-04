@@ -4,118 +4,90 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rockshell International Ltd. Data Warehouse</title>
-<meta name="description" content="Project cost, earned value, supplier and data-quality dashboard on a star-schema data warehouse.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='%231f2a44'/><path d='M14 46 L32 14 L50 46 Z' fill='%23f28c28'/></svg>">
-<link rel="stylesheet" href="/styles.css">
+<meta name="description" content="Project cost, supplier and data-quality reporting from the Rockshell data warehouse.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='%231f2a44'/><text x='32' y='44' font-size='34' text-anchor='middle' fill='white' font-family='Arial' font-weight='700'>R</text></svg>">
+<link rel="stylesheet" href="/styles.css?v=2">
 </head>
 <body>
 <header class="topbar">
-  <div class="brand">
-    <div class="logo">▲</div>
-    <div>
-      <h1>Rockshell International Ltd. Data Warehouse</h1>
-      <p class="sub">Project cost &amp; performance · star schema on PostgreSQL (Supabase)</p>
-    </div>
+  <div>
+    <h1>Rockshell International Ltd. Data Warehouse</h1>
+    <p class="sub">Project cost and performance report</p>
   </div>
-  <div class="controls">
-    <label for="projectFilter">Project</label>
-    <select id="projectFilter"><option value="ALL">All projects</option></select>
-  </div>
+  <p class="asof" id="asof"></p>
 </header>
 <nav class="tabs" id="tabs">
   <button data-page="overview" class="active">Overview</button>
-  <button data-page="budget">Budget &amp; EVM</button>
+  <button data-page="projects">Projects</button>
   <button data-page="suppliers">Suppliers</button>
-  <button data-page="labour">Labour</button>
-  <button data-page="clients">Clients</button>
   <button data-page="dq">Data Quality</button>
   <button data-page="star">Star Schema</button>
 </nav>
 <main>
-  <div id="loading" class="loading"><div class="spinner"></div><p>Loading live data from the warehouse…</p></div>
+  <div id="loading" class="loading"><div class="spinner"></div><p>Loading data from the warehouse…</p></div>
   <div id="error" class="error hidden"></div>
 
   <section id="page-overview" class="page">
-    <div class="cards" id="kpiCards"></div>
+    <div class="cards" id="ovCards"></div>
     <div class="grid-2">
-      <div class="panel wide"><h2>Monthly actual cost by category</h2><p class="hint" id="trendHint"></p><div class="chart tall"><canvas id="trendChart"></canvas></div></div>
+      <div class="panel"><h2 id="cpiTitle"></h2><p class="hint">Value of work completed for every GH₵1 spent. Below GH₵1.00 means the project is overspending.</p><div class="chart"><canvas id="cpiChart"></canvas></div></div>
+      <div class="panel"><h2 id="trendTitle"></h2><p class="hint">Total actual cost per month, all projects</p><div class="chart"><canvas id="trendChart"></canvas></div></div>
     </div>
-    <div class="panel"><h2>Project health</h2><div class="table-wrap"><table id="healthTable"></table></div></div>
+    <div class="panel"><h2>Project summary</h2><div class="table-wrap"><table id="ovTable"></table></div></div>
   </section>
 
-  <section id="page-budget" class="page hidden">
+  <section id="page-projects" class="page hidden">
+    <div class="filterbar"><label for="projectFilter">Project</label><select id="projectFilter"></select></div>
+    <div class="cards" id="prCards"></div>
     <div class="grid-2">
-      <div class="panel"><h2>Budget vs actual by project</h2><div class="chart"><canvas id="bvaChart"></canvas></div></div>
-      <div class="panel"><h2>Budget vs actual by cost category</h2><p class="hint" id="catHint"></p><div class="chart"><canvas id="catChart"></canvas></div></div>
+      <div class="panel"><h2 id="vacTitle"></h2><p class="hint">Forecast final cost minus approved budget. Positive = over budget.</p><div class="chart"><canvas id="vacChart"></canvas></div></div>
+      <div class="panel"><h2 id="catTitle"></h2><p class="hint" id="catHint"></p><div class="chart"><canvas id="catChart"></canvas></div></div>
     </div>
-    <div class="panel"><h2>Earned value analysis</h2>
-      <p class="hint">EV = BAC × % complete · CPI = EV ÷ AC · SPI = actual % ÷ planned % · EAC = BAC ÷ CPI · VAC = BAC − EAC · RAG: CPI &lt; 0.90 Red, &lt; 0.97 Amber</p>
+    <div class="panel"><h2>Earned value by project</h2>
+      <p class="hint">CPI = earned value ÷ actual cost. Forecast final cost (EAC) = budget ÷ CPI. Status: CPI below 0.90 is Red, below 0.97 is Amber.</p>
       <div class="table-wrap"><table id="evmTable"></table></div></div>
-    <div class="panel"><h2>Cost category detail</h2><div class="table-wrap"><table id="catTable"></table></div></div>
   </section>
 
   <section id="page-suppliers" class="page hidden">
-    <div class="cards" id="supplierCards"></div>
+    <div class="cards" id="spCards"></div>
     <div class="grid-2">
-      <div class="panel"><h2>On-time delivery by supplier</h2><div class="chart"><canvas id="onTimeChart"></canvas></div></div>
-      <div class="panel"><h2>Price premium vs cheapest supplier</h2><p class="hint">Average price per standard unit, by material · cheapest supplier = 100</p><div class="chart"><canvas id="premiumChart"></canvas></div></div>
+      <div class="panel"><h2 id="onTimeTitle"></h2><p class="hint">Share of purchase-order lines delivered on or before the promised date</p><div class="chart"><canvas id="onTimeChart"></canvas></div></div>
+      <div class="panel"><h2 id="premTitle"></h2><p class="hint">How much more each supplier charges than the cheapest supplier for the same material</p><div class="chart"><canvas id="premChart"></canvas></div></div>
     </div>
     <div class="panel"><h2>Supplier scorecard</h2><div class="table-wrap"><table id="scoreTable"></table></div></div>
-    <div class="panel"><h2>Price comparison by material</h2><div class="table-wrap"><table id="priceTable"></table></div></div>
-  </section>
-
-  <section id="page-labour" class="page hidden">
-    <div class="cards" id="labourCards"></div>
-    <div class="grid-2">
-      <div class="panel"><h2>Monthly labour cost by department</h2><p class="hint" id="labourHint"></p><div class="chart"><canvas id="labourChart"></canvas></div></div>
-      <div class="panel"><h2>Hours: normal vs overtime</h2><div class="chart"><canvas id="hoursChart"></canvas></div></div>
-    </div>
-    <div class="panel"><h2>Labour cost by role (all projects)</h2><div class="table-wrap"><table id="roleTable"></table></div></div>
-  </section>
-
-  <section id="page-clients" class="page hidden">
-    <div class="grid-2">
-      <div class="panel"><h2>Actual cost by client</h2><div class="chart"><canvas id="clientChart"></canvas></div></div>
-      <div class="panel"><h2>Client budget vs actual</h2><div class="table-wrap"><table id="clientTable"></table></div></div>
-    </div>
-    <div class="panel"><h2>Projects by client</h2><div class="table-wrap"><table id="clientProjTable"></table></div></div>
   </section>
 
   <section id="page-dq" class="page hidden">
     <div class="cards" id="dqCards"></div>
-    <div class="panel"><h2>Reconciliation checks</h2><p class="hint">PASS = warehouse total equals cleansed source total · INFO = explained cross-check</p><div class="table-wrap"><table id="reconTable"></table></div></div>
-    <div class="panel"><h2>Before / after cleansing by source</h2><div class="table-wrap"><table id="srcTable"></table></div></div>
-    <div class="panel"><h2>Cleansing rules applied (R1–R7)</h2><div class="table-wrap"><table id="rulesTable"></table></div></div>
     <div class="grid-2">
-      <div class="panel"><h2>ETL run log</h2><div class="table-wrap"><table id="runTable"></table></div></div>
-      <div class="panel"><h2>Star-schema load check</h2><p class="hint">Live fact totals in the cloud warehouse vs ETL reconciliation totals</p><div class="table-wrap"><table id="loadTable"></table></div></div>
+      <div class="panel"><h2 id="dqTitle"></h2><p class="hint">Rows removed, repaired or rejected during cleansing, by source system</p><div class="chart"><canvas id="dqChart"></canvas></div></div>
+      <div class="panel"><h2>Every warehouse total matches its source</h2><p class="hint">Reconciliation checks from the latest load</p><div class="table-wrap"><table id="reconTable"></table></div></div>
     </div>
+    <div class="panel"><h2>Cleansing rules applied</h2><div class="table-wrap"><table id="rulesTable"></table></div></div>
+    <div class="panel"><h2>Load history</h2><div class="table-wrap"><table id="runTable"></table></div></div>
   </section>
 
   <section id="page-star" class="page hidden">
-    <div class="panel"><h2>Star schema</h2>
-      <p class="hint">One central fact table (one row per project cost transaction) joined directly to seven dimensions, with no snowflaking. GL postings and approved budgets are the book of record for totals. Purchase-order and timesheet lines add supplier, material, delivery and hours detail.</p>
-      <div class="erd"><img src="/erd.png" alt="Star schema diagram: fact_project_cost with dimensions date, project, client, supplier, material, cost category and employee"></div>
+    <div class="panel"><h2>One fact table, seven dimensions</h2>
+      <p class="hint">Each row of the fact table is one project cost transaction. Every dimension joins directly to it, with no snowflaking.</p>
+      <div class="erd"><img src="/erd.png" alt="Star schema diagram: fact_project_cost joined to date, project, client, supplier, material, cost category and employee dimensions"></div>
     </div>
     <div class="grid-2">
-      <div class="panel"><h2>Table row counts</h2><div class="table-wrap"><table id="countTable"></table></div></div>
-      <div class="panel"><h2>Why a star schema?</h2>
+      <div class="panel"><h2>Tables and row counts</h2><div class="table-wrap"><table id="countTable"></table></div></div>
+      <div class="panel"><h2>Why a star schema</h2>
         <ul class="why">
-          <li><b>Simple joins:</b> every KPI is one join from the fact table, so queries are fast and easy to explain.</li>
-          <li><b>Conformed dimensions:</b> project, supplier, material, employee, client, cost category and date are shared by every measure.</li>
-          <li><b>History kept:</b> project manager/status and employee role changes are tracked as Slowly Changing Dimensions (Type 2).</li>
-          <li><b>Budget vs actual in one place:</b> a scenario column (ACTUAL / BUDGET) puts both on the same grain.</li>
-          <li><b>Unknown members (key 0):</b> every foreign key is filled, so no rows are lost in joins.</li>
+          <li>Every report is one join away from the fact table, so it is simple and fast.</li>
+          <li>Project, supplier, material, employee, client, cost category and date are shared across all measures.</li>
+          <li>Changes to project managers and employee roles are kept as history (SCD Type 2).</li>
+          <li>Budget and actual cost sit in the same table, marked by a scenario column.</li>
+          <li>An "unknown" row (key 0) in each dimension means no fact row is lost in a join.</li>
         </ul>
       </div>
     </div>
   </section>
 </main>
-<footer>
-  <span id="sourceBadge" class="badge">●</span>
-  <span id="footerText">Synthetic demonstration data for coursework.</span>
-</footer>
+<footer id="footer"></footer>
 <script src="/chart.js"></script>
-<script src="/app.js"></script>
+<script src="/app.js?v=2"></script>
 </body>
 </html>
