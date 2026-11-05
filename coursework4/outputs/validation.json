@@ -1,0 +1,62 @@
+{
+  "tables": {
+    "dim_client": 8,
+    "dim_project": 12,
+    "dim_supplier": 12,
+    "dim_material": 15,
+    "dim_employee": 40,
+    "dim_cost_category": 5,
+    "dim_date": 365,
+    "fact_project_cost": 400,
+    "fact_procurement": 600,
+    "fact_material_usage": 700,
+    "fact_labor": 900
+  },
+  "etl": {
+    "fact_project_cost": {
+      "raw": 403,
+      "loaded": 400,
+      "rejected": 3
+    },
+    "fact_procurement": {
+      "raw": 603,
+      "loaded": 600,
+      "rejected": 3
+    },
+    "fact_material_usage": {
+      "raw": 703,
+      "loaded": 700,
+      "rejected": 3
+    },
+    "fact_labor": {
+      "raw": 903,
+      "loaded": 900,
+      "rejected": 3
+    }
+  },
+  "total_raw_rejected": 12,
+  "foreign_key_violations": [],
+  "project_cost_preview": [
+    [
+      "P009",
+      "Rockshell Project 09",
+      777461.0,
+      217339.21,
+      560121.79
+    ],
+    [
+      "P003",
+      "Rockshell Project 03",
+      1450763.0,
+      212453.18,
+      1238309.82
+    ],
+    [
+      "P005",
+      "Rockshell Project 05",
+      255315.0,
+      197866.56,
+      57448.44
+    ]
+  ]
+}

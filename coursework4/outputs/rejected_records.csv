@@ -1,0 +1,13 @@
+source_file,source_identifier,rejection_reason
+finance_raw.csv,FC00013,duplicate or missing source identifier
+finance_raw.csv,FC99998,unknown project: P999
+finance_raw.csv,FC99999,invalid actual cost
+procurement_raw.csv,PO00022,duplicate or missing source identifier
+procurement_raw.csv,PO99998,invalid date
+procurement_raw.csv,PO99999,invalid quantity
+usage_raw.csv,MU00004,duplicate or missing source identifier
+usage_raw.csv,MU99998,unknown material: M777
+usage_raw.csv,MU99999,invalid quantity
+labour_raw.csv,LB00008,duplicate or missing source identifier
+labour_raw.csv,LB99998,unknown employee: E999
+labour_raw.csv,LB99999,invalid hours

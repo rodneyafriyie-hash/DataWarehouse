@@ -32,14 +32,14 @@ async function liveData(env) {
   });
   if (!r.ok) throw new Error(`Supabase ${r.status}`);
   const d = await r.json();
-  if (!d || !d.earned_value) throw new Error('Unexpected payload');
+  if (!d || !d.projects) throw new Error('Unexpected payload');
   d._source = 'live';
   return d;
 }
 
 async function apiData(request, env, ctx) {
   const cache = caches.default;
-  const key = new Request(new URL('/api/data?v=1', request.url).toString());
+  const key = new Request(new URL('/api/data?v=cw4', request.url).toString());
   const hit = await cache.match(key);
   if (hit) return hit;
   let body, status = 'live';

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rockshell International Ltd. Data Warehouse</title>
+<meta name="description" content="Project cost, supplier and data-quality reporting from the Rockshell data warehouse.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='%231f2a44'/><text x='32' y='44' font-size='34' text-anchor='middle' fill='white' font-family='Arial' font-weight='700'>R</text></svg>">
+<link rel="stylesheet" href="/styles.css?v=3">
+</head>
+<body>
+<header class="topbar">
+  <div>
+    <h1>Rockshell International Ltd. Data Warehouse</h1>
+    <p class="sub">Project cost, procurement, material usage and labour (Coursework 4)</p>
+  </div>
+  <p class="asof" id="asof"></p>
+</header>
+<nav class="tabs" id="tabs">
+  <button data-page="overview" class="active">Overview</button>
+  <button data-page="projects">Projects</button>
+  <button data-page="procurement">Procurement</button>
+  <button data-page="labour">Labour</button>
+  <button data-page="materials">Material usage</button>
+  <button data-page="dq">Data Quality</button>
+  <button data-page="schema">Schema</button>
+</nav>
+<main>
+  <div id="loading" class="loading"><div class="spinner"></div><p>Loading data from the warehouse…</p></div>
+  <div id="error" class="error hidden"></div>
+
+  <section id="page-overview" class="page">
+    <div class="cards" id="ovCards"></div>
+    <div class="grid-2">
+      <div class="panel"><h2 id="ovLedgerTitle"></h2><p class="hint">Ledger cost (Fact_Project_Cost) per project</p><div class="chart"><canvas id="ovLedgerChart"></canvas></div></div>
+      <div class="panel"><h2 id="ovTrendTitle"></h2><p class="hint">Ledger cost per month, all projects, 2025</p><div class="chart"><canvas id="ovTrendChart"></canvas></div></div>
+    </div>
+    <div class="panel"><h2>Four subjects, reported separately</h2>
+      <p class="hint">Procurement, material usage and ledger costs can describe overlapping activity, so they are not added together into one total project cost.</p>
+      <div class="table-wrap"><table id="ovSubjects"></table></div></div>
+  </section>
+
+  <section id="page-projects" class="page hidden">
+    <div class="cards" id="prCards"></div>
+    <div class="panel"><h2 id="prUseTitle"></h2><p class="hint">Ledger cost as a share of the approved budget</p><div class="chart tall"><canvas id="prUseChart"></canvas></div></div>
+    <div class="panel"><h2>Project budget versus ledger expenditure</h2>
+      <p class="hint">Same query as analysis_queries.sql (LEFT JOIN Dim_Project to Fact_Project_Cost, grouped by project). Synthetic data: a test of the SQL logic, not a profitability statement.</p>
+      <div class="table-wrap"><table id="prTable"></table></div></div>
+  </section>
+
+  <section id="page-procurement" class="page hidden">
+    <div class="cards" id="pcCards"></div>
+    <div class="panel"><h2 id="pcTitle"></h2><p class="hint">Purchase cost (quantity × unit price) per supplier, Fact_Procurement</p><div class="chart tall"><canvas id="pcChart"></canvas></div></div>
+    <div class="panel"><h2>Supplier purchase totals</h2><div class="table-wrap"><table id="pcTable"></table></div></div>
+  </section>
+
+  <section id="page-labour" class="page hidden">
+    <div class="cards" id="lbCards"></div>
+    <div class="panel"><h2 id="lbTitle"></h2><p class="hint">Labour cost (hours × hourly rate) per project, Fact_Labor</p><div class="chart tall"><canvas id="lbChart"></canvas></div></div>
+    <div class="panel"><h2>Hours and labour cost by project</h2><div class="table-wrap"><table id="lbTable"></table></div></div>
+  </section>
+
+  <section id="page-materials" class="page hidden">
+    <div class="cards" id="muCards"></div>
+    <div class="panel"><h2 id="muTitle"></h2><p class="hint">Material usage cost (quantity used × unit cost) per material, Fact_Material_Usage</p><div class="chart tall"><canvas id="muChart"></canvas></div></div>
+    <div class="panel"><h2>Usage by material</h2><p class="hint">Quantities are only summed within one material, so units (bags, tonnes, litres) are never mixed.</p><div class="table-wrap"><table id="muTable"></table></div></div>
+  </section>
+
+  <section id="page-dq" class="page hidden">
+    <div class="cards" id="dqCards"></div>
+    <div class="grid-2">
+      <div class="panel"><h2>Every source lost exactly 3 bad rows</h2><p class="hint">Rows read, loaded and rejected per fact source</p><div class="table-wrap"><table id="dqLoadTable"></table></div></div>
+      <div class="panel"><h2 id="valTitle"></h2><p class="hint">Expected values from validation.json compared with the live warehouse</p><div class="table-wrap"><table id="valTable"></table></div></div>
+    </div>
+    <div class="panel"><h2>Rejected records</h2><p class="hint">No invalid record is silently changed; each is logged with its reason</p><div class="table-wrap"><table id="rejTable"></table></div></div>
+  </section>
+
+  <section id="page-schema" class="page hidden">
+    <div class="panel"><h2>Four star schemas sharing conformed dimensions</h2>
+      <p class="hint">A fact constellation: four fact tables reuse the same project and date dimensions. Dim_Client links through Dim_Project.</p>
+      <div class="erd"><img src="/erd.png" alt="Four star schemas: Fact_Project_Cost, Fact_Procurement, Fact_Material_Usage and Fact_Labor sharing Dim_Project and Dim_Date"></div>
+    </div>
+    <div class="grid-2">
+      <div class="panel"><h2>Tables and row counts</h2><div class="table-wrap"><table id="countTable"></table></div></div>
+      <div class="panel"><h2>Fact grains</h2><div class="table-wrap"><table id="grainTable"></table></div></div>
+    </div>
+  </section>
+</main>
+<footer id="footer"></footer>
+<script src="/chart.js"></script>
+<script src="/app.js?v=3"></script>
+</body>
+</html>

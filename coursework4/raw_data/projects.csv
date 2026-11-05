@@ -1,0 +1,13 @@
+project_id,project_name,project_type,location,client_id,approved_budget_ghs
+P001,Rockshell Project 01,Residential,Kumasi,C001,1303851
+P002,Rockshell Project 02,Infrastructure,Accra,C002,718261
+P003,Rockshell Project 03,Infrastructure,Takoradi,C003,1450763
+P004,Rockshell Project 04,Infrastructure,Takoradi,C004,1480023
+P005,Rockshell Project 05,Commercial,Tema,C005,255315
+P006,Rockshell Project 06,Infrastructure,Accra,C006,482231
+P007,Rockshell Project 07,Commercial,Accra,C007,1192994
+P008,Rockshell Project 08,Residential,Takoradi,C008,908994
+P009,Rockshell Project 09,Residential,Takoradi,C001,777461
+P010,Rockshell Project 10,Commercial,Kumasi,C002,1039251
+P011,Rockshell Project 11,Infrastructure,Accra,C003,963859
+P012,Rockshell Project 12,Residential,Kumasi,C004,853144
