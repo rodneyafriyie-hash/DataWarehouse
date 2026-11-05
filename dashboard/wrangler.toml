@@ -11,7 +11,7 @@ enabled = true
 
 [[rules]]
 type = "Text"
-globs = ["**/*.html", "**/*.css", "**/*.txt"]
+globs = ["**/*.html", "**/*.css", "**/*.txt", "**/*.svg"]
 fallthrough = true
 
 [[rules]]

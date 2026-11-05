@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 560" role="img" aria-labelledby="schemaTitle schemaDesc">
+  <title id="schemaTitle">Coursework 4 fact constellation</title>
+  <desc id="schemaDesc">Seven shared dimensions and four fact tables. Client links only to project. The four facts are not added together.</desc>
+  <style>
+    .dim { fill: #ffffff; stroke: #1f3a5f; }
+    .fact { fill: #f7f8fa; stroke: #1f3a5f; }
+    .line { stroke: #8b95a5; fill: none; }
+    .label { font: 600 13px system-ui, sans-serif; fill: #1c2430; }
+    .small { font: 12px system-ui, sans-serif; fill: #3d4654; }
+    .title { font: 600 18px system-ui, sans-serif; fill: #1c2430; }
+    .note { font: 12px system-ui, sans-serif; fill: #5c6570; }
+  </style>
+  <rect width="980" height="560" fill="#ffffff"/>
+  <text class="title" x="24" y="32">Four facts, seven dimensions</text>
+  <text class="note" x="24" y="52">Synthetic coursework prototype. Lines show a foreign key. Client is reached only through project.</text>
+
+  <g id="dims">
+    <rect class="dim" x="24" y="78" width="120" height="52" rx="6"/>
+    <text class="label" x="36" y="100">dim_client</text>
+    <text class="small" x="36" y="118">8 clients</text>
+
+    <rect class="dim" x="164" y="78" width="130" height="52" rx="6"/>
+    <text class="label" x="176" y="100">dim_project</text>
+    <text class="small" x="176" y="118">12 projects, budget</text>
+
+    <rect class="dim" x="314" y="78" width="110" height="52" rx="6"/>
+    <text class="label" x="326" y="100">dim_date</text>
+    <text class="small" x="326" y="118">365 days, 2025</text>
+
+    <rect class="dim" x="444" y="78" width="150" height="52" rx="6"/>
+    <text class="label" x="456" y="100">dim_cost_category</text>
+    <text class="small" x="456" y="118">5 categories</text>
+
+    <rect class="dim" x="614" y="78" width="120" height="52" rx="6"/>
+    <text class="label" x="626" y="100">dim_supplier</text>
+    <text class="small" x="626" y="118">12 suppliers</text>
+
+    <rect class="dim" x="754" y="78" width="120" height="52" rx="6"/>
+    <text class="label" x="766" y="100">dim_material</text>
+    <text class="small" x="766" y="118">15 materials</text>
+
+    <rect class="dim" x="430" y="168" width="130" height="52" rx="6"/>
+    <text class="label" x="442" y="190">dim_employee</text>
+    <text class="small" x="442" y="208">40 employees</text>
+  </g>
+
+  <path class="line" d="M84 130 V200 H229 V130"/>
+  <text class="note" x="96" y="192">client_key</text>
+
+  <g id="facts">
+    <rect class="fact" x="24" y="280" width="220" height="92" rx="6"/>
+    <text class="label" x="36" y="304">fact_project_cost</text>
+    <text class="small" x="36" y="324">400 ledger lines</text>
+    <text class="small" x="36" y="342">grain: one cost transaction</text>
+    <text class="small" x="36" y="360">measure: actual_cost_ghs</text>
+
+    <rect class="fact" x="262" y="280" width="220" height="92" rx="6"/>
+    <text class="label" x="274" y="304">fact_procurement</text>
+    <text class="small" x="274" y="324">600 purchase lines</text>
+    <text class="small" x="274" y="342">grain: one purchase line</text>
+    <text class="small" x="274" y="360">measure: purchase_cost_ghs</text>
+
+    <rect class="fact" x="500" y="280" width="230" height="92" rx="6"/>
+    <text class="label" x="512" y="304">fact_material_usage</text>
+    <text class="small" x="512" y="324">700 usage entries</text>
+    <text class="small" x="512" y="342">grain: one usage entry</text>
+    <text class="small" x="512" y="360">measure: total_material_cost_ghs</text>
+
+    <rect class="fact" x="748" y="280" width="208" height="92" rx="6"/>
+    <text class="label" x="760" y="304">fact_labor</text>
+    <text class="small" x="760" y="324">900 work entries</text>
+    <text class="small" x="760" y="342">grain: one person, one day</text>
+    <text class="small" x="760" y="360">measure: labor_cost_ghs, hours</text>
+  </g>
+
+  <text class="small" x="24" y="410">Shared by every fact: dim_project and dim_date.</text>
+  <text class="small" x="24" y="430">fact_project_cost also uses dim_cost_category.</text>
+  <text class="small" x="24" y="450">fact_procurement also uses dim_supplier and dim_material.</text>
+  <text class="small" x="24" y="470">fact_material_usage also uses dim_material. fact_labor also uses dim_employee.</text>
+  <text class="note" x="24" y="508">Do not add ledger, purchase, material and labour amounts. They can describe the same work twice.</text>
+  <text class="note" x="24" y="530">Material quantities use different units (bag, tonne, litre, metre and others) and are not totalled.</text>
+</svg>

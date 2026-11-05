@@ -5,5 +5,10 @@ dashboard/.deploy/
 .dev.vars
 node_modules/
 .wrangler/
+dashboard/src/*.html
+dashboard/src/*.css
+dashboard/src/*.txt
+dashboard/src/*.png
+dashboard/src/*.svg
 __pycache__/
 pages/dist/
