@@ -8,7 +8,8 @@ mods = [("worker.js", "src/worker.js", "application/javascript+module"),
         ("styles.css", "public/styles.css", "text/plain"),
         ("chart.umd.min.js.txt", "public/chart.umd.min.js", "text/plain"),
         ("snapshot.json.txt", "public/snapshot.json", "text/plain"),
-        ("erd.png", "public/erd.png", "application/octet-stream")]
+        ("erd.png", "public/erd.png", "application/octet-stream"),
+        ("schema.svg.txt", "public/schema.svg", "text/plain")]
 parts = [{"name": n, "type": t, "b64": base64.b64encode(open(os.path.join(P, f), "rb").read()).decode()} for n, f, t in mods]
 meta = {"main_module": "worker.js", "compatibility_date": "2026-10-01", "observability": {"enabled": True},
         "bindings": [{"type": "plain_text", "name": "SUPABASE_URL", "text": os.environ["SUPABASE_URL"]},

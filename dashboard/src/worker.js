@@ -6,6 +6,7 @@ import APP from './app.js.txt';
 import CSS from './styles.css';
 import CHART from './chart.umd.min.js.txt';
 import ERD from './erd.png';
+import SCHEMA from './schema.svg.txt';
 import SNAPSHOT from './snapshot.json.txt';
 
 const SEC = {
@@ -21,6 +22,7 @@ const STATIC = {
   '/styles.css': [CSS, 'text/css; charset=utf-8', 'public, max-age=300'],
   '/chart.js': [CHART, 'application/javascript; charset=utf-8', 'public, max-age=86400'],
   '/erd.png': [ERD, 'image/png', 'public, max-age=86400'],
+  '/schema.svg': [SCHEMA, 'image/svg+xml', 'public, max-age=86400'],
 };
 
 async function liveData(env) {
@@ -47,7 +49,9 @@ async function apiData(request, env, ctx) {
     body = JSON.stringify(await liveData(env));
   } catch (e) {
     console.error('live fetch failed, serving offline copy:', e.message);
-    const d = JSON.parse(SNAPSHOT); d._source = 'snapshot'; body = JSON.stringify(d); status = 'snapshot';
+    const snap = typeof SNAPSHOT === 'string' ? JSON.parse(SNAPSHOT) : SNAPSHOT;
+    const d = typeof structuredClone === 'function' ? structuredClone(snap) : JSON.parse(JSON.stringify(snap));
+    d._source = 'snapshot'; body = JSON.stringify(d); status = 'snapshot';
   }
   const resp = new Response(body, { headers: { 'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': status === 'live' ? 'public, max-age=60' : 'no-store', 'X-Data-Source': status, ...SEC } });
