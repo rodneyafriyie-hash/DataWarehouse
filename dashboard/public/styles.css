@@ -43,3 +43,4 @@ td.wrap{white-space:normal;min-width:220px}
 .error button{margin-left:10px;padding:6px 12px;border:1px solid var(--navy);border-radius:4px;background:#fff;color:var(--navy);cursor:pointer}
 footer{padding:8px 32px 28px;color:var(--muted);font-size:.78rem;text-align:center}
 @media (max-width:900px){.grid-2{grid-template-columns:1fr}main{padding:16px}.topbar{padding:14px 16px}h1{font-size:1.05rem}.card .value{font-size:1.5rem}.chart{height:250px}.cards{grid-template-columns:1fr 1fr;gap:10px}}
+.chart.tall{height:380px}

@@ -4,7 +4,7 @@
 // is unreachable the built-in offline copy is returned instead.
 export async function handleData(request, env, waitUntil, snapshot) {
   const cache = caches.default;
-  const key = new Request(new URL('/api/data?v=1', request.url).toString());
+  const key = new Request(new URL('/api/data?v=cw4', request.url).toString());
   const hit = await cache.match(key);
   if (hit) return hit;
   let body, source = 'live';
@@ -18,7 +18,7 @@ export async function handleData(request, env, waitUntil, snapshot) {
     });
     if (!r.ok) throw new Error(`Supabase ${r.status}`);
     const d = await r.json();
-    if (!d || !d.earned_value) throw new Error('Unexpected payload');
+    if (!d || !d.projects) throw new Error('Unexpected payload');
     d._source = 'live';
     body = JSON.stringify(d);
   } catch (e) {

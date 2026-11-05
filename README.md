@@ -1,47 +1,41 @@
-# Rockshell International Ltd. Data Warehouse
+# Rockshell International Ltd. Data Warehouse (Coursework 4)
 
-A data warehouse and live dashboard built as GIMPA Data Warehousing & Mining coursework for Rockshell International Ltd., a Ghanaian construction company. **All data is synthetic.**
+Live dashboard: **https://rockshell-dw.pages.dev** (Cloudflare Pages) · also https://rockshell-dw.afriyierodney64.workers.dev (Worker)
 
-**Live dashboard:** https://rockshell-dw.afriyierodney64.workers.dev
+This repository implements **Coursework 4: Data Design and Preparation for Data Warehousing** for the Rockshell case.
+All company-like data is **synthetic** (an academic prototype, not a Rockshell production system).
 
-## Architecture
-```
-Operational sources (GL, procurement, payroll, HR, site reports, budgets)
-      │  Python ETL: cleansing rules R1–R7, deduplication, ID recovery, reconciliation
-      ▼
-Star schema on Supabase PostgreSQL 17, schema `rockshell` (private)
-      │  KPI views → one read-only function public.rockshell_dashboard() (aggregates only)
-      ▼
-Cloudflare Worker: serves the dashboard and proxies the function (key kept as a Worker secret, 60 s edge cache, offline fallback)
-      ▼
-Browser dashboard (Chart.js, simple report style, mobile friendly)
-```
+## Design: a fact constellation (four stars, shared dimensions)
+![Four star schemas](docs/star_schema_four_subjects.png)
 
-![Star schema](docs/star_erd.png)
+| Fact table | One row represents | Measures | Dimensions |
+|---|---|---|---|
+| fact_project_cost | One ledger cost transaction | actual_cost_ghs | project, date, cost_category |
+| fact_procurement | One purchase line | quantity, unit_price_ghs, purchase_cost_ghs | project, date, supplier, material |
+| fact_material_usage | One site material-usage entry | quantity_used, unit_cost_ghs, total_material_cost_ghs | project, date, material |
+| fact_labor | One employee work entry for one project/date | hours_worked, hourly_rate_ghs, labor_cost_ghs | project, date, employee |
 
-## Star schema
-`fact_project_cost` has one row per project cost transaction (GL postings, PO lines, timesheet lines and budget lines, told apart by `record_source` and `scenario`). It joins directly to seven dimensions: date, project, client, supplier, material, cost category and employee. There is no snowflaking. Project and employee are SCD Type 2. Totals use only the book-of-record rows (GL and budget), so the PO and payroll detail is never double-counted. See [supabase/README.md](supabase/README.md) for the grain, the view-to-KPI mapping and the verified figures.
+Dimensions: dim_project (with client link and approved budget), dim_date, dim_supplier, dim_material, dim_employee, dim_cost_category, dim_client (via dim_project).
+Surrogate integer keys + unique business IDs, enforced foreign keys, CHECK constraints for non-negative money and positive quantities/hours.
 
-## Dashboard pages
-Overview (headline KPIs, CPI by project, monthly spend) · Projects (forecast over/under budget, category spend, earned value table; project filter) · Suppliers (on-time and price premium) · Data Quality (132 duplicates removed, 145 IDs recovered, 32 rejected, 5/5 reconciliations) · Star Schema
+## Folders
+- `coursework4/` – the original Coursework 4 sources: report (.docx), `build_warehouse.py`, `schema.sql`, `analysis_queries.sql`, SQLite build, `raw_data/*.csv`, `outputs/` (validation.json, rejected_records.csv, project_cost_report.csv, ERD).
+- `supabase/migrations/` – PostgreSQL port deployed to Supabase (schema `rockshell`):
+  `01_cw4_schema.sql` (tables, indexes, RLS), `02_cw4_data.sql` (generated data), `03_cw4_views_api.sql` (analysis views + `public.rockshell_dashboard()`).
+- `supabase/loader/load_cw4.py` – re-applies the Coursework 4 validation rules to `coursework4/raw_data/*.csv`, asserts the result equals the SQLite build and `validation.json`, then writes `02_cw4_data.sql`.
+- `dashboard/` – Cloudflare Worker version; `pages/` – Cloudflare Pages version (same front end).
+- `archive/star_v1/` – the earlier single-star design (kept for reference only; no longer deployed).
 
-Design: flat report style with one main colour (navy) and orange only for the problem item, direct data labels, and takeaway chart titles.
+## Verified results (live warehouse = Coursework 4 report)
+- Loads: finance 403→400 (3 rejected), procurement 603→600 (3), material usage 703→700 (3), labour 903→900 (3). **2,600 fact rows loaded, 12 rejected, 0 foreign-key violations.**
+- Row counts: clients 8, projects 12, suppliers 12, materials 15, employees 40, cost categories 5, dates 365.
+- Budget vs ledger (top 3): P009 777,461.00 / 217,339.21 / 560,121.79 · P003 1,450,763.00 / 212,453.18 / 1,238,309.82 · P005 255,315.00 / 197,866.56 / 57,448.44. All 12 rows equal `outputs/project_cost_report.csv`.
+- `rockshell.v_validation` compares 13 expected values from `validation.json` with the live tables (13/13 PASS).
+
+## Views
+v_project_budget_vs_ledger, v_supplier_purchases, v_project_labour (mirror `analysis_queries.sql`), v_material_usage, v_monthly_by_subject, v_table_counts, v_validation.
+Procurement, material-usage and ledger costs may overlap, so they are reported separately and never added into one total.
 
 ## Security
-* The raw tables live in schema `rockshell`, which is not exposed by the Supabase Data API. RLS is on with no policies, and anon and authenticated have no grants.
-* The only public surface is `public.rockshell_dashboard()`: STABLE, `search_path=''`, returns aggregated KPI JSON, and EXECUTE is granted to `anon` only.
-* The browser talks only to the Worker. The Supabase key is a Worker secret.
-
-## Repository layout
-| Path | What |
-|---|---|
-| `supabase/migrations/` | 01 star schema · 02 KPI views · 03 index fix · 04 dashboard API function |
-| `supabase/loader/` | Extracts cleaned rows from the ETL database into batched INSERTs; draws the ERD |
-| `supabase/data_batches/` | Batched INSERT files used for the load (synthetic data) |
-| `dashboard/public/` | Front end (HTML, CSS, JS, Chart.js, ERD, offline data copy) |
-| `dashboard/src/worker.js` | Cloudflare Worker |
-| `dashboard/build_deploy.py` | Builds the Cloudflare API upload (reads `SUPABASE_URL` and `SUPABASE_KEY` from the environment) |
-
-## Re-deploying
-1. Apply `supabase/migrations/*.sql` in order, then run the `supabase/data_batches/*.sql` files in order.
-2. Deploy the Worker: `SUPABASE_URL=… SUPABASE_KEY=… python dashboard/build_deploy.py` and upload `.deploy/deploy.js` through the Cloudflare API. Alternatively, copy `public/*` next to `src/worker.js` (renaming `app.js`, `chart.umd.min.js` and `snapshot.json` with a `.txt` suffix), run `wrangler secret put SUPABASE_KEY`, then run `wrangler deploy`.
+RLS is on for every table, the `rockshell` schema is not exposed through the API, and `anon` has no table privileges. The only public read path is the
+SECURITY DEFINER function `public.rockshell_dashboard()` (aggregated JSON), called server-side by the Worker / Pages Function. The Supabase key is a Cloudflare secret, never in this repo.

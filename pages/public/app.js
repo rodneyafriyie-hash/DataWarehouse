@@ -1,7 +1,7 @@
-/* Rockshell International Ltd. Data Warehouse - dashboard (v2, simple report style). Reads /api/data. */
+/* Rockshell International Ltd. Data Warehouse - dashboard (Coursework 4 constellation, simple report style). Reads /api/data. */
 (() => {
   const NAVY = '#1f2a44', ORANGE = '#e07b1f', GREY = '#aab2bf', TEXT = '#252a34';
-  let D = null, charts = {}, project = 'ALL', current = 'overview';
+  let D = null, charts = {}, current = 'overview';
 
   const $ = (id) => document.getElementById(id);
   const n = (v) => (v === null || v === undefined ? 0 : Number(v));
@@ -59,154 +59,115 @@
       plugins: { labels: { fmt }, tooltip: { enabled: false } } },
   });
 
+  const top = (arr, k) => [...arr].sort((a, b) => n(b[k]) - n(a[k]));
+  const ordinalMonth = (m) => new Date(2025, m - 1, 1).toLocaleDateString('en-GB', { month: 'short' });
+
   /* ---------------- Overview ---------------- */
   function overview() {
-    const ev = D.earned_value, bva = D.budget_vs_actual;
-    const budget = bva.reduce((s, r) => s + n(r.approved_budget), 0), actual = bva.reduce((s, r) => s + n(r.actual_cost), 0);
-    const overrun = ev.reduce((s, r) => s + Math.max(-n(r.vac), 0), 0);
-    const red = ev.filter((r) => r.cost_status === 'Red'), worst = [...ev].sort((a, b) => n(a.cpi) - n(b.cpi))[0];
-    const dq = D.dq_summary;
+    const T = D.totals, P = D.projects, loaded = D.etl.reduce((s, r) => s + n(r.loaded_rows), 0), rej = D.etl.reduce((s, r) => s + n(r.rejected_rows), 0);
+    const pass = D.validation.filter((v) => v.status === 'PASS').length;
     cards('ovCards', [
-      { l: 'Approved budget', v: ghsM(budget), note: `Latest approved budgets for ${bva.length} projects` },
-      { l: 'Spent to date', v: ghsM(actual), note: `${pct(100 * actual / budget, 0)} of the approved budget` },
-      { l: 'Forecast overrun', v: ghsM(overrun), alert: overrun > 0, note: `Mostly ${esc(worst.project_name)} (${ghsM(-worst.vac)})` },
-      { l: 'Projects at risk', v: red.length, alert: red.length > 0, note: red.map((r) => `${esc(r.project_name)}: CPI ${num(r.cpi, 3)}`).join(', ') || 'None' },
-      { l: 'Data checks passed', v: `${dq.reconciliations_pass} of ${dq.reconciliations_total}`, note: 'Warehouse totals match the source systems' }]);
-
-    const sorted = [...ev].sort((a, b) => n(a.cpi) - n(b.cpi));
-    $('cpiTitle').textContent = `${worst.project_name} earns only GH₵${num(worst.cpi, 2)} of work per GH₵1 spent`;
-    chart('cpiChart', hbar(sorted.map((r) => r.project_name), sorted.map((r) => n(r.cpi)),
-      sorted.map((r) => (r.cost_status === 'Red' ? ORANGE : NAVY)), (v) => 'GH₵' + v.toFixed(2), { max: 1.15 }));
-
-    const months = [...new Set(D.monthly_spend.map((r) => r.m))].sort();
-    const tot = months.map((m) => D.monthly_spend.filter((r) => r.m === m).reduce((s, r) => s + n(r.v), 0));
-    const last = tot[tot.length - 1], first12 = tot.slice(-24, -12).reduce((a, b) => a + b, 0), last12 = tot.slice(-12).reduce((a, b) => a + b, 0);
-    $('trendTitle').textContent = `Monthly spending reached ${ghsM(last)} in ${monthName(months[months.length - 1])}` +
-      (first12 ? ` (${last12 >= first12 ? 'up' : 'down'} ${pct(Math.abs(100 * (last12 / first12 - 1)), 0)} on the year before)` : '');
-    chart('trendChart', { type: 'line', data: { labels: months.map(monthName), datasets: [{ data: tot, borderColor: NAVY, backgroundColor: NAVY, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.25 }] },
-      options: { layout: { padding: { right: 8 } }, interaction: { mode: 'index', intersect: false },
-        scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 6, color: '#6b7280', maxRotation: 0 } },
-                  y: { beginAtZero: true, grid: { color: '#eef0f3' }, border: { display: false }, ticks: { maxTicksLimit: 5, color: '#6b7280', callback: (v) => ghsM(v, 1) } } },
-        plugins: { tooltip: { callbacks: { label: (c) => ghs(c.raw) } } } } });
-
-    table('ovTable', [
-      { h: 'Project', f: (r) => `<b>${esc(r.project_name)}</b>` }, { h: 'Client', k: 'client_name' }, { h: 'Manager', k: 'current_manager' },
-      { h: 'Budget', num: 1, f: (r) => ghs(r.approved_budget) }, { h: 'Spent to date', num: 1, f: (r) => ghs(r.actual_cost) },
-      { h: 'Complete', num: 1, f: (r) => pct(evOf(r.project_id).actual_pct_complete, 0) },
-      { h: 'Forecast final cost', num: 1, f: (r) => ghs(evOf(r.project_id).eac) },
-      { h: 'Status', f: (r) => status(evOf(r.project_id).cost_status) }], bva);
+      { l: 'Approved budget', v: ghsM(T.approved_budget_ghs), note: `${P.length} projects (Dim_Project)` },
+      { l: 'Ledger cost', v: ghsM(T.ledger_cost_ghs), note: `${pct(100 * T.ledger_cost_ghs / T.approved_budget_ghs, 1)} of the approved budget` },
+      { l: 'Fact rows loaded', v: num(loaded), note: 'Across 4 fact tables' },
+      { l: 'Rows rejected', v: num(rej), alert: rej > 0, note: 'Invalid or duplicate, logged with a reason' },
+      { l: 'Validation checks', v: `${pass} of ${D.validation.length}`, note: 'Counts and foreign keys match validation.json' }]);
+    const s = top(P, 'ledger_cost_ghs'), t = s[0];
+    $('ovLedgerTitle').textContent = `${t.project_id} has the highest ledger cost (${ghs(t.ledger_cost_ghs, 2)})`;
+    chart('ovLedgerChart', hbar(s.map((r) => r.project_id), s.map((r) => n(r.ledger_cost_ghs)), s.map((r, i) => (i === 0 ? ORANGE : NAVY)), (v) => ghsM(v), {}, { left: 0, right: 60 }));
+    const L = D.monthly.filter((r) => r.subject === 'Ledger cost').sort((a, b) => a.month - b.month);
+    const pk = top(L, 'amount_ghs')[0];
+    $('ovTrendTitle').textContent = `Ledger spending peaked in ${ordinalMonth(pk.month)} 2025 at ${ghsM(pk.amount_ghs)}`;
+    chart('ovTrendChart', { type: 'line', data: { labels: L.map((r) => ordinalMonth(r.month)), datasets: [{ data: L.map((r) => n(r.amount_ghs)), borderColor: NAVY, backgroundColor: NAVY, borderWidth: 2, pointRadius: 3, tension: 0.25 }] },
+      options: { scales: { x: { grid: { display: false }, ticks: { color: '#6b7280' } }, y: { beginAtZero: true, grid: { color: '#eef0f3' }, border: { display: false }, ticks: { maxTicksLimit: 5, color: '#6b7280', callback: (v) => ghsM(v, 0) } } },
+        plugins: { tooltip: { callbacks: { label: (c) => ghs(c.raw, 2) } } } } });
+    const cnt = D.table_counts;
+    table('ovSubjects', [{ h: 'Subject', f: (r) => `<b>${r.s}</b>` }, { h: 'Fact table', k: 'f' }, { h: 'One row represents', k: 'g' }, { h: 'Rows', num: 1, f: (r) => num(cnt[r.f]) }, { h: 'Total', num: 1, f: (r) => ghs(r.v, 2) }], [
+      { s: 'Project cost', f: 'fact_project_cost', g: 'One ledger cost transaction', v: T.ledger_cost_ghs },
+      { s: 'Procurement', f: 'fact_procurement', g: 'One purchase line', v: T.procurement_ghs },
+      { s: 'Material usage', f: 'fact_material_usage', g: 'One site material-usage entry', v: T.material_usage_ghs },
+      { s: 'Labour', f: 'fact_labor', g: 'One employee work entry for one project/date', v: T.labour_ghs }]);
   }
 
   /* ---------------- Projects ---------------- */
   function projects() {
-    const ev = D.earned_value, sel = project === 'ALL' ? null : evOf(project);
-    if (!sel) {
-      const bac = ev.reduce((s, r) => s + n(r.bac), 0), ac = ev.reduce((s, r) => s + n(r.ac), 0), eac = ev.reduce((s, r) => s + n(r.eac), 0);
-      const lab = D.labour_by_month.reduce((s, r) => s + n(r.cost), 0), hrs = D.labour_by_month.reduce((s, r) => s + n(r.hours), 0), ot = D.labour_by_month.reduce((s, r) => s + n(r.ot), 0);
-      cards('prCards', [
-        { l: 'Budget at completion', v: ghsM(bac), note: 'All projects' }, { l: 'Spent to date', v: ghsM(ac), note: pct(100 * ac / bac, 0) + ' of budget' },
-        { l: 'Forecast final cost', v: ghsM(eac), alert: eac > bac, note: `Net ${ghsM(Math.abs(eac - bac))} ${eac > bac ? 'over' : 'under'} budget across all projects` },
-        { l: 'Labour cost', v: ghsM(lab), note: `${pct(100 * ot / (hrs + ot))} of hours were overtime` }]);
-    } else {
-      cards('prCards', [
-        { l: 'Budget at completion', v: ghsM(sel.bac), note: esc(sel.project_name) },
-        { l: 'Spent to date', v: ghsM(sel.ac), note: `${pct(sel.actual_pct_complete, 0)} of the work complete` },
-        { l: 'Cost performance (CPI)', v: num(sel.cpi, 3), alert: sel.cost_status === 'Red', note: `GH₵${num(sel.cpi, 2)} of work per GH₵1 spent · ${status(sel.cost_status)}` },
-        { l: 'Forecast final cost', v: ghsM(sel.eac), alert: n(sel.vac) < 0, note: `${ghsM(Math.abs(sel.vac))} ${n(sel.vac) < 0 ? 'over' : 'under'} budget` }]);
-    }
-    const byOver = [...ev].sort((a, b) => n(a.vac) - n(b.vac)), top = byOver[0];
-    $('vacTitle').textContent = `${top.project_name} is forecast to finish ${ghsM(-top.vac)} over budget`;
-    chart('vacChart', hbar(byOver.map((r) => r.project_name), byOver.map((r) => -n(r.vac)),
-      byOver.map((r) => (r.cost_status === 'Red' ? ORANGE : sel && r.project_id !== sel.project_id ? GREY : NAVY)),
-      (v) => (v >= 0 ? '+' + ghsM(v) + ' over' : ghsM(-v) + ' under'), {}, { left: 0, right: 120 }));
-
-    const rows = D.budget_by_category.filter((r) => !sel || r.project_id === sel.project_id);
-    const cats = D.cost_categories.map((c) => { const rr = rows.filter((r) => r.cost_category_code === c.code);
-      const b = rr.reduce((s, r) => s + n(r.budget_amount), 0), a = rr.reduce((s, r) => s + n(r.actual_cost), 0); return { name: c.name, p: b ? 100 * a / b : 0 }; })
-      .sort((x, y) => y.p - x.p);
-    const over = cats.filter((c) => c.p > 100);
-    $('catTitle').textContent = over.length ? `${over.map((c) => c.name).join(' and ')} ${over.length > 1 ? 'are' : 'is'} over budget (${over.map((c) => pct(c.p)).join(', ')})`
-      : `No cost category is over budget yet (highest: ${cats[0].name}, ${pct(cats[0].p, 0)})`;
-    $('catHint').textContent = `Actual cost as a share of the approved budget for each category · ${sel ? sel.project_name : 'all projects'}`;
-    chart('catChart', hbar(cats.map((c) => c.name), cats.map((c) => c.p), cats.map((c) => (c.p > 100 ? ORANGE : NAVY)), (v) => pct(v, 0), { max: 125 }));
-
-    table('evmTable', [
-      { h: 'Project', f: (r) => `<b>${esc(r.project_name)}</b>` }, { h: 'Status', f: (r) => status(r.cost_status) },
-      { h: 'Complete', num: 1, f: (r) => pct(r.actual_pct_complete, 0) }, { h: 'Planned', num: 1, f: (r) => pct(r.planned_pct_complete, 0) },
-      { h: 'Budget (BAC)', num: 1, f: (r) => ghs(r.bac) }, { h: 'Spent (AC)', num: 1, f: (r) => ghs(r.ac) }, { h: 'Earned (EV)', num: 1, f: (r) => ghs(r.ev) },
-      { h: 'CPI', num: 1, f: (r) => `<span class="${r.cost_status === 'Red' ? 'hl' : ''}">${num(r.cpi, 3)}</span>` }, { h: 'SPI', num: 1, f: (r) => num(r.spi, 3) },
-      { h: 'Forecast final cost (EAC)', num: 1, f: (r) => ghs(r.eac) },
-      { h: 'Over / (under) budget', num: 1, f: (r) => `<span class="${n(r.vac) < -100000 ? 'hl' : ''}">${n(r.vac) < 0 ? ghs(-r.vac) : '(' + ghs(r.vac) + ')'}</span>` }],
-      sel ? [sel] : ev);
+    const P = D.projects.map((r) => Object.assign({ used: 100 * n(r.ledger_cost_ghs) / n(r.approved_budget_ghs) }, r));
+    const s = top(P, 'used'), hi = s[0], first3 = D.projects.slice(0, 3).map((r) => r.project_id);
+    cards('prCards', D.projects.slice(0, 3).map((r, i) => ({ l: `#${i + 1} ledger cost: ${esc(r.project_id)}`, v: ghs(r.ledger_cost_ghs, 2),
+      note: `Budget ${ghs(r.approved_budget_ghs, 2)} · remaining ${ghs(r.budget_less_ledger_cost_ghs, 2)}` }))
+      .concat([{ l: 'Highest share of budget used', v: pct(hi.used), alert: true, note: `${esc(hi.project_id)}: ${ghs(hi.ledger_cost_ghs, 2)} of ${ghs(hi.approved_budget_ghs, 2)}` }]));
+    $('prUseTitle').textContent = `${hi.project_id} has used ${pct(hi.used)} of its budget; most projects are under 25%`;
+    chart('prUseChart', hbar(s.map((r) => `${r.project_id} · ${r.location}`), s.map((r) => r.used), s.map((r, i) => (i === 0 ? ORANGE : NAVY)), (v) => pct(v), { max: 100 }));
+    table('prTable', [{ h: 'Project', f: (r) => `<b class="${first3.includes(r.project_id) ? 'hl' : ''}">${esc(r.project_id)}</b>` }, { h: 'Name', k: 'project_name' }, { h: 'Type', k: 'project_type' },
+      { h: 'Location', k: 'location' }, { h: 'Client', k: 'client_name' }, { h: 'Approved budget', num: 1, f: (r) => ghs(r.approved_budget_ghs, 2) },
+      { h: 'Ledger cost', num: 1, f: (r) => ghs(r.ledger_cost_ghs, 2) }, { h: 'Budget less ledger cost', num: 1, f: (r) => ghs(r.budget_less_ledger_cost_ghs, 2) },
+      { h: 'Ledger lines', num: 1, k: 'ledger_lines' }], D.projects);
   }
 
-  /* ---------------- Suppliers ---------------- */
-  function suppliers() {
-    const sc = D.supplier_scorecard, sp = D.supplier_price;
-    const worst = [...sc].sort((a, b) => n(a.overall_on_time_pct) - n(b.overall_on_time_pct))[0];
-    const best = [...sc].sort((a, b) => n(b.overall_on_time_pct) - n(a.overall_on_time_pct))[0];
-    const spend = sc.reduce((s, r) => s + n(r.spend), 0), lines = sc.reduce((s, r) => s + n(r.po_lines), 0);
-    const wShort = shortSup(worst.supplier_name);
-    const prem = `${num(worst.min_pct_vs_cheapest, 1)}–${num(worst.max_pct_vs_cheapest, 1)}%`;
-    cards('spCards', [
-      { l: `${esc(worst.supplier_name)}: on time`, v: pct(worst.overall_on_time_pct), alert: true, note: `Lowest of ${sc.length} materials suppliers` },
-      { l: `${esc(worst.supplier_name)}: price premium`, v: prem, alert: true, note: `Above the cheapest supplier on all ${worst.materials} materials it sells` },
-      { l: 'Most reliable supplier', v: pct(best.overall_on_time_pct), note: `${esc(best.supplier_name)}, delivered on time` },
-      { l: 'Materials purchased', v: ghsM(spend), note: `${num(lines)} purchase-order lines` }]);
-    const s2 = [...sc].sort((a, b) => n(b.overall_on_time_pct) - n(a.overall_on_time_pct));
-    $('onTimeTitle').textContent = `${wShort} delivers on time only ${pct(worst.overall_on_time_pct, 0)} of the time`;
-    chart('onTimeChart', hbar(s2.map((r) => shortSup(r.supplier_name)), s2.map((r) => n(r.overall_on_time_pct)),
-      s2.map((r) => (r.supplier_id === worst.supplier_id ? ORANGE : NAVY)), (v) => pct(v), { max: 110 }));
-    const pairs = sp.filter((r) => n(r.pct_vs_cheapest) > 0).sort((a, b) => n(b.pct_vs_cheapest) - n(a.pct_vs_cheapest));
-    $('premTitle').textContent = `${wShort} charges ${prem} more than the cheapest supplier`;
-    chart('premChart', hbar(pairs.map((r) => `${r.material_name.replace(/ \(.*\)| 6in/g, '')} · ${shortSup(r.supplier_name)}`), pairs.map((r) => n(r.pct_vs_cheapest)),
-      pairs.map((r) => (r.supplier_id === worst.supplier_id ? ORANGE : GREY)), (v) => '+' + pct(v), { max: 8 }));
-    table('scoreTable', [{ h: 'Supplier', f: (r) => `<b>${esc(r.supplier_name)}</b>` }, { h: 'Materials', num: 1, k: 'materials' },
-      { h: 'Purchase lines', num: 1, f: (r) => num(r.po_lines) }, { h: 'Spend', num: 1, f: (r) => ghs(r.spend) },
-      { h: 'On time', num: 1, f: (r) => `<span class="${r.supplier_id === worst.supplier_id ? 'hl' : ''}">${pct(r.overall_on_time_pct)}</span>` },
-      { h: 'Price vs cheapest', num: 1, f: (r) => (n(r.max_pct_vs_cheapest) === 0 ? 'Cheapest' : n(r.min_pct_vs_cheapest) === n(r.max_pct_vs_cheapest) ? '+' + pct(r.max_pct_vs_cheapest)
-          : `<span class="${r.supplier_id === worst.supplier_id ? 'hl' : ''}">${n(r.min_pct_vs_cheapest) === 0 ? 'Cheapest to +' + pct(r.max_pct_vs_cheapest) : '+' + pct(r.min_pct_vs_cheapest) + ' to +' + pct(r.max_pct_vs_cheapest)}</span>`) }], sc);
+  /* ---------------- Procurement ---------------- */
+  function procurement() {
+    const S = D.suppliers, t = S[0], tot = n(D.totals.procurement_ghs), lines = S.reduce((s, r) => s + n(r.purchase_lines), 0);
+    cards('pcCards', [{ l: 'Purchase cost', v: ghsM(tot), note: `${num(lines)} purchase lines` }, { l: 'Suppliers', v: S.length, note: 'Dim_Supplier' },
+      { l: 'Largest supplier', v: ghsM(t.purchase_total_ghs), note: `${esc(t.supplier_name)} (${pct(100 * t.purchase_total_ghs / tot)} of purchases)` },
+      { l: 'Average line', v: ghs(tot / lines, 2), note: 'Purchase cost per line' }]);
+    $('pcTitle').textContent = `${t.supplier_name} received the most purchase value (${ghs(t.purchase_total_ghs, 2)})`;
+    chart('pcChart', hbar(S.map((r) => r.supplier_name.replace('Synthetic ', '')), S.map((r) => n(r.purchase_total_ghs)), S.map((r, i) => (i === 0 ? ORANGE : NAVY)), (v) => ghsM(v)));
+    table('pcTable', [{ h: 'Rank', f: (r) => S.indexOf(r) + 1 }, { h: 'Supplier', f: (r) => `<b>${esc(r.supplier_name)}</b>` }, { h: 'Purchase lines', num: 1, k: 'purchase_lines' },
+      { h: 'Purchase total', num: 1, f: (r) => ghs(r.purchase_total_ghs, 2) }, { h: 'Share', num: 1, f: (r) => pct(100 * r.purchase_total_ghs / tot) }], S);
+  }
+
+  /* ---------------- Labour ---------------- */
+  function labour() {
+    const L = D.labour, t = L[0], T = D.totals;
+    cards('lbCards', [{ l: 'Labour cost', v: ghsM(T.labour_ghs), note: `${num(D.table_counts.fact_labor)} work entries` }, { l: 'Hours worked', v: num(T.labour_hours), note: '40 employees (Dim_Employee)' },
+      { l: 'Average cost per hour', v: ghs(T.labour_ghs / T.labour_hours, 2), note: 'Labour cost ÷ hours' },
+      { l: 'Highest labour cost', v: ghs(t.labor_cost_ghs, 2), note: `${esc(t.project_name)}, ${num(t.hours)} hours` }]);
+    $('lbTitle').textContent = `${t.project_name} has the highest labour cost (${ghs(t.labor_cost_ghs, 2)})`;
+    chart('lbChart', hbar(L.map((r) => r.project_id), L.map((r) => n(r.labor_cost_ghs)), L.map((r, i) => (i === 0 ? ORANGE : NAVY)), (v) => ghsM(v)));
+    table('lbTable', [{ h: 'Project', f: (r) => `<b>${esc(r.project_name)}</b>` }, { h: 'Entries', num: 1, k: 'entries' }, { h: 'Hours', num: 1, f: (r) => num(r.hours) },
+      { h: 'Labour cost', num: 1, f: (r) => ghs(r.labor_cost_ghs, 2) }, { h: 'Cost per hour', num: 1, f: (r) => ghs(r.labor_cost_ghs / r.hours, 2) }], L);
+  }
+
+  /* ---------------- Material usage ---------------- */
+  function materials() {
+    const M = D.materials, t = M[0], tot = n(D.totals.material_usage_ghs);
+    cards('muCards', [{ l: 'Material usage cost', v: ghsM(tot), note: `${num(D.table_counts.fact_material_usage)} site usage entries` }, { l: 'Materials', v: M.length, note: 'Each with one canonical unit' },
+      { l: 'Costliest material', v: ghsM(t.usage_cost_ghs), note: `${esc(t.material_name)}: ${num(t.quantity_used)} ${esc(t.unit)}s used` }]);
+    $('muTitle').textContent = `${t.material_name} accounts for the most usage cost (${ghs(t.usage_cost_ghs, 2)})`;
+    chart('muChart', hbar(M.map((r) => r.material_name), M.map((r) => n(r.usage_cost_ghs)), M.map((r, i) => (i === 0 ? ORANGE : NAVY)), (v) => ghsM(v)));
+    table('muTable', [{ h: 'Material', f: (r) => `<b>${esc(r.material_name)}</b>` }, { h: 'Unit', k: 'unit' }, { h: 'Quantity used', num: 1, f: (r) => num(r.quantity_used) },
+      { h: 'Entries', num: 1, k: 'entries' }, { h: 'Usage cost', num: 1, f: (r) => ghs(r.usage_cost_ghs, 2) }], M);
   }
 
   /* ---------------- Data quality ---------------- */
   function dq() {
-    const s = D.dq_summary;
-    cards('dqCards', [
-      { l: 'Rows received', v: num(s.raw_rows), note: `From 12 data sources, load #${s.run_id}` },
-      { l: 'Duplicates removed', v: num(s.duplicates_removed), note: 'Repeated records dropped' },
-      { l: 'IDs recovered', v: num(s.ids_recovered), note: 'Missing keys filled from other fields' },
-      { l: 'Rows rejected', v: num(s.rows_rejected), note: 'Unusable rows, logged with a reason' },
-      { l: 'Totals reconciled', v: `${s.reconciliations_pass} of ${s.reconciliations_total}`, note: 'Warehouse equals the cleaned source' }]);
-    const nice = { payroll: 'Payroll', accounting_gl: 'General ledger', procurement_po: 'Purchase orders', site_progress: 'Site reports', client_invoices: 'Invoices',
-      hr_employees: 'HR', project_budgets: 'Budgets', project_register: 'Projects', supplier_master: 'Suppliers', material_master: 'Materials', clients: 'Clients', site_material: 'Site material use' };
-    const src = D.dq_source_counts.map((r) => ({ name: nice[r.source] || r.source, v: n(r.duplicates_removed) + n(r.ids_recovered) + n(r.rejected) }))
-      .filter((r) => r.v > 0).sort((a, b) => b.v - a.v);
-    $('dqTitle').textContent = `${src[0].name} needed the most cleaning (${num(src[0].v)} rows)`;
-    chart('dqChart', hbar(src.map((r) => r.name), src.map((r) => r.v), src.map((r, i) => (i === 0 ? ORANGE : NAVY)), (v) => num(v)));
-    const label = (c) => ({ GL: 'General ledger', Procurement: 'Purchase orders', Payroll: 'Payroll', Invoices: 'Client invoices', Budgets: 'Budgets' }[c.split(':')[0]] || c.split(':')[0]);
-    table('reconTable', [{ h: 'Source', f: (r) => label(r.check) }, { h: 'Warehouse total', num: 1, f: (r) => ghs(r.actual) },
-      { h: 'Difference', num: 1, f: (r) => ghs(r.difference) }, { h: 'Result', f: (r) => status(r.status) }], D.reconciliation.filter((r) => r.status !== 'INFO'));
-    const ruleName = { R1: 'Standardise supplier and vendor names', R2: 'Convert quantities to standard units', R3: 'Fix mixed date formats',
-      R4: 'Remove duplicate records', R5: 'Recover missing project and employee IDs', R6: 'Validate values and reject bad rows', R7: 'Turn money and percent text into numbers',
-      SCD2: 'Keep history of role and manager changes' };
-    const groups = {};
-    D.dq_rules.forEach((r) => { const g = groups[r.rule] || (groups[r.rule] = { rule: r.rule, sources: new Set(), rows: 0 }); g.sources.add(nice[r.source] || r.source); g.rows += n(r.rows); });
-    table('rulesTable', [{ h: 'Rule', k: 'rule' }, { h: 'What it does', f: (r) => esc(ruleName[r.rule] || r.rule) },
-      { h: 'Applied to', wrap: 1, f: (r) => esc([...r.sources].join(', ')) }, { h: 'Rows affected', num: 1, f: (r) => num(r.rows) }],
-      Object.values(groups).sort((a, b) => (a.rule === 'SCD2') - (b.rule === 'SCD2') || a.rule.localeCompare(b.rule)));
-    table('runTable', [{ h: 'Load', f: (r) => '#' + r.run_id }, { h: 'Started', f: (r) => fmtTime(r.started_at) },
-      { h: 'Duration', num: 1, f: (r) => ((new Date(r.finished_at) - new Date(r.started_at)) / 1000).toFixed(1) + ' s' }, { h: 'Result', f: (r) => status(r.status) }], D.etl_runs);
+    const E = D.etl, raw = E.reduce((s, r) => s + n(r.raw_rows), 0), ld = E.reduce((s, r) => s + n(r.loaded_rows), 0), rj = E.reduce((s, r) => s + n(r.rejected_rows), 0);
+    const pass = D.validation.filter((v) => v.status === 'PASS').length, fkv = D.validation.find((v) => v.check_name === 'foreign_key_violations');
+    cards('dqCards', [{ l: 'Rows read', v: num(raw), note: 'From 4 raw fact files' }, { l: 'Rows loaded', v: num(ld), note: 'Into the 4 fact tables' },
+      { l: 'Rows rejected', v: num(rj), alert: rj > 0, note: '3 per source: duplicate, bad reference, bad value' },
+      { l: 'Foreign-key violations', v: num(fkv ? fkv.actual : 0), note: 'Every fact row links to a dimension row' },
+      { l: 'Validation checks', v: `${pass} of ${D.validation.length}`, note: 'Passed' }]);
+    table('dqLoadTable', [{ h: 'Source file', k: 'source_file' }, { h: 'Fact table', k: 'fact_table' }, { h: 'Read', num: 1, k: 'raw_rows' }, { h: 'Loaded', num: 1, k: 'loaded_rows' }, { h: 'Rejected', num: 1, k: 'rejected_rows' }], E);
+    $('valTitle').textContent = pass === D.validation.length ? 'All validation checks pass' : `${D.validation.length - pass} validation checks fail`;
+    const nm = (c) => c === 'total_raw_rejected' ? 'Rejected rows' : c === 'foreign_key_violations' ? 'Foreign-key violations' : 'Rows in ' + c.replace('rows_', '');
+    table('valTable', [{ h: 'Check', f: (r) => nm(r.check_name) }, { h: 'Expected', num: 1, f: (r) => num(r.expected) }, { h: 'Actual', num: 1, f: (r) => num(r.actual) }, { h: 'Result', f: (r) => status(r.status) }], D.validation);
+    table('rejTable', [{ h: 'Source file', k: 'source_file' }, { h: 'Record ID', f: (r) => `<b>${esc(r.source_identifier)}</b>` }, { h: 'Reason', wrap: 1, k: 'rejection_reason' }], D.rejected);
   }
 
-  /* ---------------- Star schema ---------------- */
-  function star() {
-    const c = D.star_counts, desc = { fact_project_cost: 'Fact: one row per project cost transaction', dim_date: 'Calendar', dim_project: 'Projects (with history)',
-      dim_client: 'Clients', dim_supplier: 'Suppliers', dim_material: 'Materials', dim_cost_category: 'Cost categories', dim_employee: 'Employees (with history)' };
-    table('countTable', [{ h: 'Table', f: (r) => `<b>${esc(r.t)}</b>` }, { h: 'Holds', k: 'd' }, { h: 'Rows', num: 1, f: (r) => num(r.n) }],
-      Object.keys(desc).map((t) => ({ t, d: desc[t], n: c[t] })));
+  /* ---------------- Schema ---------------- */
+  function schema() {
+    const c = D.table_counts, desc = { fact_project_cost: 'Fact: one ledger cost transaction', fact_procurement: 'Fact: one purchase line', fact_material_usage: 'Fact: one site material-usage entry',
+      fact_labor: 'Fact: one employee work entry for one project/date', dim_project: 'Project, type, location, client link, approved budget', dim_date: 'Day, month, quarter, year',
+      dim_supplier: 'Supplier IDs and names', dim_material: 'Material names and canonical units', dim_employee: 'Employee roles (synthetic names)', dim_cost_category: 'Expense categories', dim_client: 'Clients (via Dim_Project)' };
+    table('countTable', [{ h: 'Table', f: (r) => `<b>${esc(r.t)}</b>` }, { h: 'Holds', k: 'd' }, { h: 'Rows', num: 1, f: (r) => num(r.n) }], Object.keys(desc).map((t) => ({ t, d: desc[t], n: c[t] })));
+    table('grainTable', [{ h: 'Fact table', f: (r) => `<b>${r.f}</b>` }, { h: 'Dimensions', wrap: 1, k: 'd' }, { h: 'Measures', wrap: 1, k: 'm' }], [
+      { f: 'Fact_Project_Cost', d: 'Project, Date, Cost Category', m: 'Actual_Cost_GHS' },
+      { f: 'Fact_Procurement', d: 'Project, Date, Supplier, Material', m: 'Quantity, Unit_Price_GHS, Purchase_Cost_GHS' },
+      { f: 'Fact_Material_Usage', d: 'Project, Date, Material', m: 'Quantity_Used, Unit_Cost_GHS, Total_Material_Cost_GHS' },
+      { f: 'Fact_Labor', d: 'Project, Date, Employee', m: 'Hours_Worked, Hourly_Rate_GHS, Labor_Cost_GHS' }]);
   }
 
-  const PAGES = { overview, projects, suppliers, dq, star };
+  const PAGES = { overview, projects, procurement, labour, materials, dq, schema };
   function show(page) {
     current = page;
     document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('active', b.dataset.page === page));
@@ -221,13 +182,10 @@
       const r = await fetch('/api/data', { headers: { Accept: 'application/json' } });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       D = await r.json();
-      $('projectFilter').innerHTML = '<option value="ALL">All projects</option>' + D.projects.map((p) => `<option value="${esc(p.project_id)}">${esc(p.project_name)}</option>`).join('');
-      $('projectFilter').value = project;
       $('loading').classList.add('hidden');
-      const asof = D.earned_value.map((e) => e.as_of_week).sort().pop();
-      $('asof').textContent = 'Progress as at ' + fmtDate(asof);
+      $('asof').textContent = 'Coursework 4 data · transactions dated 2025';
       $('footer').textContent = (D._source !== 'snapshot' ? 'Live data from the cloud data warehouse (PostgreSQL on Supabase)' : 'Offline copy of the warehouse data (live connection unavailable)') +
-        ' · refreshed ' + fmtTime(D.generated_at) + ' · synthetic data prepared for coursework';
+        ' · refreshed ' + fmtTime(D.generated_at) + ' · synthetic academic prototype data (Coursework 4)';
       const h = location.hash.slice(1); show(PAGES[h] ? h : 'overview');
     } catch (e) {
       $('loading').classList.add('hidden');
@@ -240,6 +198,5 @@
   Chart.defaults.color = '#6b7280';
   Chart.defaults.transitions.resize = { animation: { duration: 0 } };
   document.querySelectorAll('.tabs button').forEach((b) => (b.onclick = () => D && show(b.dataset.page)));
-  $('projectFilter').onchange = (e) => { project = e.target.value; if (D) show(current); };
   load();
 })();
