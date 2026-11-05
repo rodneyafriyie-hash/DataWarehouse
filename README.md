@@ -23,7 +23,7 @@ Surrogate integer keys + unique business IDs, enforced foreign keys, CHECK const
 - `supabase/migrations/` – PostgreSQL port deployed to Supabase (schema `rockshell`):
   `01_cw4_schema.sql` (tables, indexes, RLS), `02_cw4_data.sql` (generated data), `03_cw4_views_api.sql` (analysis views + `public.rockshell_dashboard()`).
 - `supabase/loader/load_cw4.py` – re-applies the Coursework 4 validation rules to `coursework4/raw_data/*.csv`, asserts the result equals the SQLite build and `validation.json`, then writes `02_cw4_data.sql`.
-- `dashboard/` – Cloudflare Worker version; `pages/` – Cloudflare Pages version (same front end).
+- `dashboard/` – Cloudflare Worker version; `pages/` – Cloudflare Pages version. Both serve the same one-page dashboard: 4 number cards, budget vs spent per project, top 5 suppliers, data-check line.
 - `archive/star_v1/` – the earlier single-star design (kept for reference only; no longer deployed).
 
 ## Verified results (live warehouse = Coursework 4 report)

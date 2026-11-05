@@ -44,3 +44,14 @@ td.wrap{white-space:normal;min-width:220px}
 footer{padding:8px 32px 28px;color:var(--muted);font-size:.78rem;text-align:center}
 @media (max-width:900px){.grid-2{grid-template-columns:1fr}main{padding:16px}.topbar{padding:14px 16px}h1{font-size:1.05rem}.card .value{font-size:1.5rem}.chart{height:250px}.cards{grid-template-columns:1fr 1fr;gap:10px}}
 .chart.tall{height:380px}
+
+main.simple{max-width:1100px}
+.cards.four{grid-template-columns:repeat(4,1fr)}
+.cards.four .card .value{font-size:2.3rem}
+.cards.four .card .label{font-size:.95rem;color:var(--text)}
+.panel h2{font-size:1.15rem}
+.chart.big{height:520px}.chart.mid{height:260px}
+.key{display:inline-block;width:12px;height:12px;vertical-align:-1px;margin-right:4px;border-radius:2px}.key.grey{background:#d5d9e0}.key.navy{background:var(--navy)}
+.checks{font-size:1.05rem;margin:4px 0 10px}.checks .dot{width:10px;height:10px}
+.how{color:var(--muted);font-size:.85rem}.how a{color:var(--navy)}
+@media (max-width:900px){.cards.four{grid-template-columns:1fr 1fr}.cards.four .card .value{font-size:1.6rem}.chart.big{height:560px}}
