@@ -8,4 +8,4 @@ Hosted prototype: **https://rockshell-dw.pages.dev**. The Worker copy is https:/
 - `functions/api/_shared.js` uses `SUPABASE_URL` and `SUPABASE_KEY`. The key is a Pages secret. A failed call returns HTTP 503 and does not reuse an older file.
 - Project variables stay `SUPABASE_URL` (plain text) and `SUPABASE_KEY` (secret). Neither is stored in `public/`.
 
-`python pages/test_contract.py` checks the adapter with synthetic fixtures. `node pages/test_dashboard.mjs` checks the page in Chrome.
+`python pages/test_contract.py` checks the adapter and builds `dist/_worker.js` without a key, then runs that file. `node pages/test_dashboard.mjs` checks the page in Chrome. Deploy from this directory so Wrangler compiles `functions/`.

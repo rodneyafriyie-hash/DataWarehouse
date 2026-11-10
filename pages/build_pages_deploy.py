@@ -1,8 +1,18 @@
-"""Builds .deploy/pages_deploy.js for a Cloudflare Pages Direct Upload (run through the Cloudflare API / MCP execute).
-Static files come from pages/public. Because Direct Upload over the raw API cannot compile the functions/ folder
-(wrangler normally does that), the Function is shipped as an equivalent advanced-mode _worker.js generated from
-functions/api/_shared.js. No key is embedded: SUPABASE_URL / SUPABASE_KEY are set as project env vars from the environment."""
-import base64, json, os, mimetypes, blake3
+"""Builds pages/dist/_worker.js for a Pages Direct Upload.
+
+Static files come from pages/public. Direct Upload cannot compile functions/, so this
+script makes one advanced-mode module from ledger_adapter.js and _shared.js.
+The recommended deploy is still `npx wrangler pages deploy public` from this
+directory, which compiles functions/ itself.
+
+`python3 build_pages_deploy.py --worker-only` writes dist/_worker.js and does not
+read SUPABASE_URL or SUPABASE_KEY. The full script also writes an API upload
+script that copies those variables from the environment. Do not commit that script.
+"""
+import base64, json, os, mimetypes, sys
+WORKER_ONLY = '--worker-only' in sys.argv
+if not WORKER_ONLY:
+    import blake3
 P = os.path.dirname(os.path.abspath(__file__))
 PUB = os.path.join(P, "public")
 assets = []
@@ -12,7 +22,7 @@ for root, _, files in os.walk(PUB):
         if f in ("_headers", "_redirects", "_routes.json"): continue
         b64 = base64.b64encode(open(full, "rb").read()).decode()
         ext = os.path.splitext(f)[1][1:]
-        h = blake3.blake3((b64 + ext).encode()).hexdigest()[:32]
+        h = '' if WORKER_ONLY else blake3.blake3((b64 + ext).encode()).hexdigest()[:32]
         ctype = mimetypes.guess_type(f)[0] or "application/octet-stream"
         if f.endswith(".js"): ctype = "application/javascript"
         assets.append({"path": rel, "hash": h, "b64": b64, "type": ctype})
@@ -22,8 +32,6 @@ shared = shared.replace("import { fetchLedger } from './ledger_adapter.js';\n", 
 embedded = {a["path"]: {"b64": a["b64"], "type": a["type"]} for a in assets}
 worker = adapter + "\n" + shared + f"""
 const EMBED = {json.dumps(embedded)};
-const SEC = {{ 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'X-Frame-Options': 'DENY',
-  'Content-Security-Policy': "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'" }};
 const DECODED = {{}};
 function serveEmbedded(path) {{
   if (path === '/') path = '/index.html';
@@ -49,6 +57,9 @@ export default {{
 """
 os.makedirs(os.path.join(P, "dist"), exist_ok=True)
 open(os.path.join(P, "dist", "_worker.js"), "w").write(worker)
+if WORKER_ONLY:
+    print('worker-only', os.path.join(P, 'dist', '_worker.js'))
+    sys.exit(0)
 headers = open(os.path.join(PUB, "_headers")).read()
 env_vars = {"SUPABASE_URL": {"type": "plain_text", "value": os.environ["SUPABASE_URL"]},
             "SUPABASE_KEY": {"type": "secret_text", "value": os.environ["SUPABASE_KEY"]}}

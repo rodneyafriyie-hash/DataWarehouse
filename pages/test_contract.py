@@ -34,6 +34,11 @@ def main():
     if 'fact_project_cost' not in HTML:
         errors.append('ledger scope is not stated')
     proc = subprocess.run(['node', str(ROOT / 'pages' / 'test_ledger_adapter.mjs')], capture_output=True, text=True)
+    bundle = subprocess.run(['node', str(ROOT / 'pages' / 'test_deploy_bundle.mjs')], capture_output=True, text=True)
+    if bundle.returncode != 0:
+        errors.append('deploy bundle smoke test failed\n' + bundle.stdout + bundle.stderr)
+    else:
+        print(bundle.stdout.strip())
     # The expression above always uses node because a non-empty string is truthy.
     if proc.returncode != 0:
         errors.append('adapter test failed\n' + proc.stdout + proc.stderr)

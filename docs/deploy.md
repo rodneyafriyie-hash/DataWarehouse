@@ -10,14 +10,18 @@ No new migration is part of this dashboard change. Migration `04_private_dashboa
 
 ## Pages (the copy at rockshell-dw.pages.dev)
 
-From the repository root, with Wrangler logged in as an account that already owns the project:
+From the `pages` directory, with Wrangler logged in as an account that already owns the project:
 
 ```bash
 cd pages
 npx wrangler pages deploy public --project-name rockshell-dw --commit-dirty=true
 ```
 
-Wrangler picks up `pages/functions` when you run that command from `pages/`. The function reads `SUPABASE_URL` and `SUPABASE_KEY` from the project environment. If those are already set, do not replace them.
+Run that from `pages/`, not the repository root. Wrangler uploads `public/` and compiles the sibling `functions/` directory (`functions/api/data.js`, `functions/api/_shared.js`, and `functions/api/ledger_adapter.js`). A copy of `public/` with no `functions` folder beside it would publish the page without `GET /api/data`.
+
+The function reads `SUPABASE_URL` and `SUPABASE_KEY` from the project environment. If those are already set, do not replace them.
+
+`python3 build_pages_deploy.py --worker-only` writes `dist/_worker.js` for the older direct-upload path and does not read secrets. `pages/test_deploy_bundle.mjs` parses that file and runs its `fetch`. Do not commit `dist/` or `.deploy/`.
 
 To set them once, without writing them into the repo:
 
