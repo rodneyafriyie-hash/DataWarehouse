@@ -4,20 +4,24 @@ This is a coursework prototype. Deploy only to the existing project **rockshell-
 
 The hosted database is Supabase project `kthdkdbrokrcokngnfpy` only. The key stays a Cloudflare secret (`SUPABASE_KEY`). `SUPABASE_URL` is the plain project URL `https://kthdkdbrokrcokngnfpy.supabase.co`.
 
-The page calls `GET /api/data`. That route calls `POST /rest/v1/rpc/rockshell_dashboard` with the secret. The browser never receives the key.
+The page calls `GET /api/data`. That route calls `POST /rest/v1/rpc/rockshell_dashboard` with the existing server secret. The function reads only the four ledger-star tables. Do not expose schema `rockshell` and do not add grants. The browser never receives the key. Direct table REST is not used: `Accept-Profile: rockshell` returns 406.
 
-Migration `supabase/migrations/04_private_dashboard_api.sql` is optional and is **not** required for this dashboard. Apply it separately, then run `supabase/checks/04_private_dashboard_api_verify.sql`. Do not apply it to any other Supabase project.
+No new migration is part of this dashboard change. Migration `04_private_dashboard_api.sql` remains optional and is not required here. Do not apply SQL to any project other than `kthdkdbrokrcokngnfpy`.
 
 ## Pages (the copy at rockshell-dw.pages.dev)
 
-From the repository root, with Wrangler logged in as an account that already owns the project:
+From the `pages` directory, with Wrangler logged in as an account that already owns the project:
 
 ```bash
 cd pages
 npx wrangler pages deploy public --project-name rockshell-dw --commit-dirty=true
 ```
 
-Wrangler picks up `pages/functions` when you run that command from `pages/`. The function reads `SUPABASE_URL` and `SUPABASE_KEY` from the project environment. If those are already set, do not replace them.
+Run that from `pages/`, not the repository root. Wrangler uploads `public/` and compiles the sibling `functions/` directory (`functions/api/data.js`, `functions/api/_shared.js`, and `functions/api/ledger_adapter.js`). A copy of `public/` with no `functions` folder beside it would publish the page without `GET /api/data`.
+
+The function reads `SUPABASE_URL` and `SUPABASE_KEY` from the project environment. If those are already set, do not replace them.
+
+`python3 build_pages_deploy.py --worker-only` writes `dist/_worker.js` for the older direct-upload path and does not read secrets. `pages/test_deploy_bundle.mjs` parses that file and runs its `fetch`. Do not commit `dist/` or `.deploy/`.
 
 To set them once, without writing them into the repo:
 
@@ -28,14 +32,14 @@ npx wrangler pages secret put SUPABASE_KEY --project-name rockshell-dw
 
 Set the URL in the Pages project settings as a plain-text variable named `SUPABASE_URL`. Do not pass the key on the command line in a shared script. `pages/build_pages_deploy.py` also refuses to embed a key in static files, but it does place the key in a generated API upload script if the variables are present in the environment. Prefer the Wrangler command above so the key is not written to disk.
 
-After deploy, check:
+After deploy, check the live response rather than an old total:
 
 ```bash
 curl -sI https://rockshell-dw.pages.dev/
-curl -s https://rockshell-dw.pages.dev/api/data | python -c "import sys,json; d=json.load(sys.stdin); print(d['totals']['ledger_cost_ghs'], d.get('_source'))"
+curl -s https://rockshell-dw.pages.dev/api/data | python -c "import sys,json; d=json.load(sys.stdin); print(d.get('_source'), d.get('scope'), sorted(d))"
 ```
 
-The ledger total must stay `1900433.58`.
+Expect `_source` `live`, `scope` `ledger`, approved budget `11426147` and recorded spending `1900433.58`. The JSON should not contain procurement, suppliers, labour, or materials.
 
 ## Worker (the copy at rockshell-dw.afriyierodney64.workers.dev)
 
@@ -58,4 +62,4 @@ npx wrangler secret put SUPABASE_KEY
 
 ## What you are uploading
 
-Static files live in `pages/public` (and the same HTML, CSS and JS in `dashboard/public`). The offline snapshot is `pages/functions/_snapshot.json`. It contains warehouse totals, not a key. A secret scan before deploy should find no `.env`, no service key and no Cloudflare token.
+Static files live in `pages/public` (and the same HTML, CSS and JS in `dashboard/public`). The API handler does not ship an offline copy of older figures. A secret scan before deploy should find no `.env`, no service key and no Cloudflare token.

@@ -3,11 +3,11 @@ with its modules. The Supabase key is read from the environment and sent only as
 import base64, json, os
 P = os.path.dirname(os.path.abspath(__file__))
 mods = [("worker.js", "src/worker.js", "application/javascript+module"),
+        ("ledger_adapter.js", "src/ledger_adapter.js", "application/javascript+module"),
         ("index.html", "public/index.html", "text/plain"),
         ("app.js.txt", "public/app.js", "text/plain"),
         ("styles.css", "public/styles.css", "text/plain"),
         ("chart.umd.min.js.txt", "public/chart.umd.min.js", "text/plain"),
-        ("snapshot.json.txt", "public/snapshot.json", "text/plain"),
         ("erd.png", "public/erd.png", "application/octet-stream"),
         ("schema.svg.txt", "public/schema.svg", "text/plain")]
 parts = [{"name": n, "type": t, "b64": base64.b64encode(open(os.path.join(P, f), "rb").read()).decode()} for n, f, t in mods]

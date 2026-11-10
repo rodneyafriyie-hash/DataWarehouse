@@ -1,0 +1,263 @@
+{
+  "_note": "Fixture copied from the verified demo of 2026-11-10. Tests must not present it as a live call.",
+  "design": "ledger star: dim_project, dim_date, dim_cost_category, fact_project_cost",
+  "generated_at": "2026-11-10T22:56:00Z",
+  "projects": [
+    {
+      "project_id": "P005",
+      "project_name": "Rockshell Project 05",
+      "project_type": "Commercial",
+      "location": "Tema",
+      "approved_budget_ghs": "255315.00",
+      "actual_cost_ghs": "197866.56",
+      "remaining_budget_ghs": "57448.44",
+      "pct_budget_used": "77.5",
+      "expense_lines": 39
+    },
+    {
+      "project_id": "P006",
+      "project_name": "Rockshell Project 06",
+      "project_type": "Infrastructure",
+      "location": "Accra",
+      "approved_budget_ghs": "482231.00",
+      "actual_cost_ghs": "177829.43",
+      "remaining_budget_ghs": "304401.57",
+      "pct_budget_used": "36.9",
+      "expense_lines": 36
+    },
+    {
+      "project_id": "P009",
+      "project_name": "Rockshell Project 09",
+      "project_type": "Residential",
+      "location": "Takoradi",
+      "approved_budget_ghs": "777461.00",
+      "actual_cost_ghs": "217339.21",
+      "remaining_budget_ghs": "560121.79",
+      "pct_budget_used": "28.0",
+      "expense_lines": 44
+    },
+    {
+      "project_id": "P002",
+      "project_name": "Rockshell Project 02",
+      "project_type": "Infrastructure",
+      "location": "Accra",
+      "approved_budget_ghs": "718261.00",
+      "actual_cost_ghs": "133624.36",
+      "remaining_budget_ghs": "584636.64",
+      "pct_budget_used": "18.6",
+      "expense_lines": 30
+    },
+    {
+      "project_id": "P007",
+      "project_name": "Rockshell Project 07",
+      "project_type": "Commercial",
+      "location": "Accra",
+      "approved_budget_ghs": "1192994.00",
+      "actual_cost_ghs": "192919.55",
+      "remaining_budget_ghs": "1000074.45",
+      "pct_budget_used": "16.2",
+      "expense_lines": 38
+    },
+    {
+      "project_id": "P003",
+      "project_name": "Rockshell Project 03",
+      "project_type": "Infrastructure",
+      "location": "Takoradi",
+      "approved_budget_ghs": "1450763.00",
+      "actual_cost_ghs": "212453.18",
+      "remaining_budget_ghs": "1238309.82",
+      "pct_budget_used": "14.6",
+      "expense_lines": 43
+    },
+    {
+      "project_id": "P012",
+      "project_name": "Rockshell Project 12",
+      "project_type": "Residential",
+      "location": "Kumasi",
+      "approved_budget_ghs": "853144.00",
+      "actual_cost_ghs": "121748.82",
+      "remaining_budget_ghs": "731395.18",
+      "pct_budget_used": "14.3",
+      "expense_lines": 29
+    },
+    {
+      "project_id": "P011",
+      "project_name": "Rockshell Project 11",
+      "project_type": "Infrastructure",
+      "location": "Accra",
+      "approved_budget_ghs": "963859.00",
+      "actual_cost_ghs": "134188.75",
+      "remaining_budget_ghs": "829670.25",
+      "pct_budget_used": "13.9",
+      "expense_lines": 30
+    },
+    {
+      "project_id": "P008",
+      "project_name": "Rockshell Project 08",
+      "project_type": "Residential",
+      "location": "Takoradi",
+      "approved_budget_ghs": "908994.00",
+      "actual_cost_ghs": "123474.69",
+      "remaining_budget_ghs": "785519.31",
+      "pct_budget_used": "13.6",
+      "expense_lines": 28
+    },
+    {
+      "project_id": "P001",
+      "project_name": "Rockshell Project 01",
+      "project_type": "Residential",
+      "location": "Kumasi",
+      "approved_budget_ghs": "1303851.00",
+      "actual_cost_ghs": "152353.23",
+      "remaining_budget_ghs": "1151497.77",
+      "pct_budget_used": "11.7",
+      "expense_lines": 30
+    },
+    {
+      "project_id": "P010",
+      "project_name": "Rockshell Project 10",
+      "project_type": "Commercial",
+      "location": "Kumasi",
+      "approved_budget_ghs": "1039251.00",
+      "actual_cost_ghs": "111743.05",
+      "remaining_budget_ghs": "927507.95",
+      "pct_budget_used": "10.8",
+      "expense_lines": 25
+    },
+    {
+      "project_id": "P004",
+      "project_name": "Rockshell Project 04",
+      "project_type": "Infrastructure",
+      "location": "Takoradi",
+      "approved_budget_ghs": "1480023.00",
+      "actual_cost_ghs": "124892.75",
+      "remaining_budget_ghs": "1355130.25",
+      "pct_budget_used": "8.4",
+      "expense_lines": 28
+    }
+  ],
+  "categories": [
+    {
+      "category_id": "CAT03",
+      "category_name": "Utilities",
+      "actual_cost_ghs": "441514.65",
+      "expense_lines": 88
+    },
+    {
+      "category_id": "CAT01",
+      "category_name": "Equipment",
+      "actual_cost_ghs": "417460.21",
+      "expense_lines": 87
+    },
+    {
+      "category_id": "CAT05",
+      "category_name": "Permits",
+      "actual_cost_ghs": "386083.24",
+      "expense_lines": 79
+    },
+    {
+      "category_id": "CAT04",
+      "category_name": "Site Administration",
+      "actual_cost_ghs": "359525.62",
+      "expense_lines": 79
+    },
+    {
+      "category_id": "CAT02",
+      "category_name": "Transport",
+      "actual_cost_ghs": "295849.86",
+      "expense_lines": 67
+    }
+  ],
+  "monthly": [
+    {
+      "year": 2025,
+      "month": 1,
+      "actual_cost_ghs": "159682.47",
+      "expense_lines": 33
+    },
+    {
+      "year": 2025,
+      "month": 2,
+      "actual_cost_ghs": "169042.97",
+      "expense_lines": 29
+    },
+    {
+      "year": 2025,
+      "month": 3,
+      "actual_cost_ghs": "174468.25",
+      "expense_lines": 37
+    },
+    {
+      "year": 2025,
+      "month": 4,
+      "actual_cost_ghs": "154023.47",
+      "expense_lines": 33
+    },
+    {
+      "year": 2025,
+      "month": 5,
+      "actual_cost_ghs": "158692.99",
+      "expense_lines": 31
+    },
+    {
+      "year": 2025,
+      "month": 6,
+      "actual_cost_ghs": "141663.40",
+      "expense_lines": 33
+    },
+    {
+      "year": 2025,
+      "month": 7,
+      "actual_cost_ghs": "126351.99",
+      "expense_lines": 31
+    },
+    {
+      "year": 2025,
+      "month": 8,
+      "actual_cost_ghs": "206550.74",
+      "expense_lines": 43
+    },
+    {
+      "year": 2025,
+      "month": 9,
+      "actual_cost_ghs": "158566.74",
+      "expense_lines": 34
+    },
+    {
+      "year": 2025,
+      "month": 10,
+      "actual_cost_ghs": "150430.39",
+      "expense_lines": 33
+    },
+    {
+      "year": 2025,
+      "month": 11,
+      "actual_cost_ghs": "150675.59",
+      "expense_lines": 34
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "actual_cost_ghs": "150284.58",
+      "expense_lines": 29
+    }
+  ],
+  "totals": {
+    "approved_budget_ghs": 11426147.0,
+    "actual_cost_ghs": 1900433.58,
+    "expense_lines": 400
+  },
+  "table_counts": {
+    "dim_project": 12,
+    "dim_date": 365,
+    "dim_cost_category": 5,
+    "fact_project_cost": 400
+  },
+  "quality_checks": {
+    "orphan_project_keys": 0,
+    "orphan_date_keys": 0,
+    "orphan_category_keys": 0,
+    "duplicate_transaction_ids": 0,
+    "negative_or_zero_costs": 0
+  }
+}
