@@ -9,6 +9,7 @@ import http from 'node:http';
 import { readFileSync } from 'node:fs';
 import { dirname, join, extname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { adaptLedger } from './functions/api/ledger_adapter.js';
 
 const puppeteer = process.env.PUPPETEER_ENTRY
   ? (await import(pathToFileURL(process.env.PUPPETEER_ENTRY).href)).default
@@ -16,24 +17,24 @@ const puppeteer = process.env.PUPPETEER_ENTRY
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), 'public');
 const TYPES = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json' };
-const SYNTHETIC = {
-  _source: 'live',
-  scope: 'ledger',
-  tables: ['dim_project', 'dim_date', 'dim_cost_category', 'fact_project_cost'],
-  generated_at: '2026-11-10T12:00:00Z',
-  categories_status: 'ready',
-  incomplete: [],
-  projects: [
-    { project_id: 'P-A', project_name: 'Synthetic Harbour', approved_budget_ghs: 1000, ledger_cost_ghs: 250, remaining_ghs: 750, ledger_lines: 2 },
-    { project_id: 'P-B', project_name: 'Synthetic School', approved_budget_ghs: 400, ledger_cost_ghs: 0, remaining_ghs: 400, ledger_lines: 0 },
-  ],
-  categories: [
-    { category_id: 'CAT01', category_name: 'Equipment', amount_ghs: 180, project_id: null },
-    { category_id: 'CAT05', category_name: 'Permits', amount_ghs: 70, project_id: null },
-  ],
-  totals: { approved_budget_ghs: 1400, ledger_cost_ghs: 250, remaining_ghs: 1150, project_count: 2 },
+const FIXTURE = {
+  ...adaptLedger(JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'fixtures/verified_rpc_payload.json'), 'utf8'))),
+  _source: 'fixture',
 };
-const NO_CATEGORY = { ...SYNTHETIC, categories: null, categories_status: 'unavailable' };
+const ZERO = {
+  _source: 'fixture',
+  scope: 'ledger',
+  projects: [
+    { project_id: 'P-A', project_name: 'Synthetic Harbour', approved_budget_ghs: 1000, actual_cost_ghs: 250, remaining_budget_ghs: 750, expense_lines: 2, pct_budget_used: 25 },
+    { project_id: 'P-B', project_name: 'Synthetic School', approved_budget_ghs: 400, actual_cost_ghs: 0, remaining_budget_ghs: 400, expense_lines: 0, pct_budget_used: 0 },
+  ],
+  categories: [{ category_id: 'CAT01', category_name: 'Equipment', actual_cost_ghs: 250, expense_lines: 2, project_id: null }],
+  categories_status: 'ready',
+  monthly: [],
+  incomplete: [],
+  totals: { approved_budget_ghs: 1400, actual_cost_ghs: 250, remaining_budget_ghs: 1150, project_count: 2 },
+};
+const NO_CATEGORY = { ...FIXTURE, categories: null, categories_status: 'unavailable' };
 
 function start(mode) {
   const server = http.createServer((req, res) => {
@@ -45,8 +46,8 @@ function start(mode) {
         return;
       }
       const body = mode === 'empty'
-        ? { _source: 'live', scope: 'ledger', projects: [], incomplete: [], categories: null, categories_status: 'unavailable', totals: null, generated_at: null }
-        : mode === 'nocat' ? NO_CATEGORY : SYNTHETIC;
+        ? { _source: 'fixture', scope: 'ledger', projects: [], incomplete: [], categories: null, categories_status: 'unavailable', monthly: [], totals: null, generated_at: null }
+        : mode === 'nocat' ? NO_CATEGORY : mode === 'zero' ? ZERO : FIXTURE;
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(body));
       return;
@@ -88,6 +89,7 @@ async function main() {
   const empty = await start('empty');
   const broken = await start('error');
   const nocat = await start('nocat');
+  const zeroSrv = await start('zero');
   const browser = await puppeteer.launch({
     executablePath: chrome,
     headless: true,
@@ -96,24 +98,26 @@ async function main() {
   });
   try {
     const desk = await open(browser, live.address().port, 1440, 1000);
-    await desk.page.waitForFunction(() => (document.querySelector('#budgetFig')?.textContent || '').includes('GH₵1,400.00'));
+    await desk.page.waitForFunction(() => (document.querySelector('#budgetFig')?.textContent || '').includes('GH₵11,426,147.00'));
     const text = await desk.page.evaluate(() => document.body.textContent);
-    for (const bit of ['GH₵1,400.00', 'GH₵250.00', 'GH₵1,150.00', 'Synthetic Harbour', 'Synthetic School', 'Equipment', 'Not a profit figure', 'not percent complete']) {
+    for (const bit of ['GH₵11,426,147.00', 'GH₵1,900,433.58', 'GH₵9,525,713.42', 'Utilities', '16.6% of the approved budget', 'not a live warehouse call', 'Not a profit figure']) {
       assert(text.includes(bit), 'missing ' + bit);
     }
-    for (const banned of ['Purchases', 'supplier', 'procurement', 'GH₵11,426,147.00']) {
+    for (const banned of ['Purchases', 'supplier', 'procurement', 'client_name']) {
       assert(!text.includes(banned), 'unexpected ' + banned);
     }
     assert(!text.includes('\u2014'), 'em dash');
-    await desk.page.select('#projectFilter', 'P-B');
-    await desk.page.waitForFunction(() => document.querySelector('#budgetFig')?.textContent === 'GH₵400.00');
-    const filtered = await desk.page.evaluate(() => document.querySelector('#ledgerFig').textContent);
-    assert(filtered === 'GH₵0.00', 'zero-spend project filter ' + filtered);
-    const remain = await desk.page.evaluate(() => document.querySelector('#remainFig').textContent);
-    assert(remain === 'GH₵400.00', 'remaining for zero spend');
+    await desk.page.select('#projectFilter', 'P005');
+    await desk.page.waitForFunction(() => (document.querySelector('#ledgerFig')?.textContent || '') === 'GH₵197,866.56');
     const boxes = await desk.page.evaluate(() => [...document.querySelectorAll('.card, .figure')].filter((el) => el.scrollWidth > el.clientWidth + 2).map((el) => el.className));
     assert(boxes.length === 0, 'overflow ' + boxes.join(','));
     assert(desk.errors.length === 0, desk.errors.join(' | '));
+
+    const zero = await open(browser, zeroSrv.address().port, 1280, 800);
+    await zero.page.select('#projectFilter', 'P-B');
+    await zero.page.waitForFunction(() => document.querySelector('#ledgerFig')?.textContent === 'GH₵0.00');
+    assert((await zero.page.evaluate(() => document.querySelector('#remainFig').textContent)) === 'GH₵400.00', 'zero spend remaining');
+    assert((await zero.page.evaluate(() => document.querySelector('footer').textContent)).includes('not a live warehouse call'), 'zero fixture labeled');
 
     const mobile = await open(browser, live.address().port, 390, 844);
     await mobile.page.waitForFunction(() => (document.querySelector('#budgetFig')?.textContent || '').includes('GH₵'));
@@ -144,7 +148,7 @@ async function main() {
     console.log('PORTS', JSON.stringify({ live: live.address().port, mobile: live.address().port }));
   } finally {
     await browser.close();
-    live.close(); empty.close(); broken.close(); nocat.close();
+    live.close(); empty.close(); broken.close(); nocat.close(); zeroSrv.close();
   }
 }
 

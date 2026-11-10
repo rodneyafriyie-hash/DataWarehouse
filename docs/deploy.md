@@ -4,7 +4,7 @@ This is a coursework prototype. Deploy only to the existing project **rockshell-
 
 The hosted database is Supabase project `kthdkdbrokrcokngnfpy` only. The key stays a Cloudflare secret (`SUPABASE_KEY`). `SUPABASE_URL` is the plain project URL `https://kthdkdbrokrcokngnfpy.supabase.co`.
 
-The page calls `GET /api/data`. That route calls `POST /rest/v1/rpc/rockshell_dashboard` with the secret, then `ledger_adapter.js` keeps only the ledger fields. The browser never receives the key. Do not deploy this page until the database simplification and the RPC contract are confirmed. If `rockshell_dashboard` still selects tables that have been removed, the API returns an error instead of old figures.
+The page calls `GET /api/data`. That route calls `POST /rest/v1/rpc/rockshell_dashboard` with the existing server secret. The function reads only the four ledger-star tables. Do not expose schema `rockshell` and do not add grants. The browser never receives the key. Direct table REST is not used: `Accept-Profile: rockshell` returns 406.
 
 No new migration is part of this dashboard change. Migration `04_private_dashboard_api.sql` remains optional and is not required here. Do not apply SQL to any project other than `kthdkdbrokrcokngnfpy`.
 
@@ -35,7 +35,7 @@ curl -sI https://rockshell-dw.pages.dev/
 curl -s https://rockshell-dw.pages.dev/api/data | python -c "import sys,json; d=json.load(sys.stdin); print(d.get('_source'), d.get('scope'), sorted(d))"
 ```
 
-Expect `_source` `live` and `scope` `ledger`. The JSON should not contain procurement, suppliers, labour, or materials. Do not require the earlier coursework total of 1900433.58 until the simplified load is verified.
+Expect `_source` `live`, `scope` `ledger`, approved budget `11426147` and recorded spending `1900433.58`. The JSON should not contain procurement, suppliers, labour, or materials.
 
 ## Worker (the copy at rockshell-dw.afriyierodney64.workers.dev)
 

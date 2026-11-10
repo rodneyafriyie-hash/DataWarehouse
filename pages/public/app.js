@@ -65,21 +65,45 @@
     charts[id] = new Chart(canvas, cfg);
   }
 
+  function sumCategories(rows) {
+    const map = new Map();
+    for (const row of rows) {
+      const key = row.category_id || row.category_name;
+      const add = Math.round(Number(row.actual_cost_ghs) * 100);
+      const prev = map.get(key);
+      if (!prev) {
+        map.set(key, { category_id: row.category_id, category_name: row.category_name, project_id: null, cents: add });
+      } else {
+        prev.cents += add;
+      }
+    }
+    return [...map.values()].map((row) => ({
+      category_id: row.category_id,
+      category_name: row.category_name,
+      project_id: null,
+      actual_cost_ghs: row.cents / 100,
+    }));
+  }
+
   function selection() {
     const id = $('projectFilter').value;
     const projects = id ? DATA.projects.filter((p) => p.project_id === id) : DATA.projects.slice();
     const sum = (key) => Math.round(projects.reduce((total, row) => total + Math.round(Number(row[key]) * 100), 0)) / 100;
     const totals = projects.length ? {
       approved_budget_ghs: sum('approved_budget_ghs'),
-      ledger_cost_ghs: sum('ledger_cost_ghs'),
-      remaining_ghs: sum('remaining_ghs'),
+      actual_cost_ghs: sum('actual_cost_ghs'),
+      remaining_budget_ghs: sum('remaining_budget_ghs'),
     } : null;
     let categories = null;
     let categoryNote = '';
     if (DATA.categories_status === 'ready' && Array.isArray(DATA.categories)) {
       const scoped = DATA.categories.some((c) => c.project_id);
-      if (!id) categories = DATA.categories.slice();
-      else if (scoped) {
+      if (!id && scoped) {
+        categories = sumCategories(DATA.categories);
+        categoryNote = 'Category amounts are added across projects. Each project budget is still counted once.';
+      } else if (!id) {
+        categories = DATA.categories.slice();
+      } else if (scoped) {
         categories = DATA.categories.filter((c) => c.project_id === id);
         categoryNote = 'Category amounts for the selected project.';
       } else {
@@ -101,15 +125,21 @@
     const hasProjects = view.projects.length > 0 && view.totals;
     $('empty').classList.toggle('hidden', DATA.projects.length > 0);
     $('budgetFig').textContent = hasProjects ? ghs(view.totals.approved_budget_ghs) : '';
-    $('ledgerFig').textContent = hasProjects ? ghs(view.totals.ledger_cost_ghs) : '';
-    $('remainFig').textContent = hasProjects ? ghs(view.totals.remaining_ghs) : '';
+    $('ledgerFig').textContent = hasProjects ? ghs(view.totals.actual_cost_ghs) : '';
+    $('remainFig').textContent = hasProjects ? ghs(view.totals.remaining_budget_ghs) : '';
+    const share = hasProjects && view.totals.approved_budget_ghs
+      ? (Math.round((view.totals.actual_cost_ghs * 1000) / view.totals.approved_budget_ghs) / 10).toFixed(1) + '%'
+      : '';
     $('budgetNote').textContent = hasProjects
       ? view.projects.length + (view.projects.length === 1 ? ' project. Counted once.' : ' projects. Each budget is counted once.')
       : '';
+    $('spendNote').textContent = hasProjects
+      ? 'fact_project_cost only. ' + share + ' of the approved budget. Not percent complete.'
+      : 'fact_project_cost only.';
 
-    const zeros = view.projects.filter((p) => Number(p.ledger_cost_ghs) === 0);
+    const zeros = view.projects.filter((p) => Number(p.actual_cost_ghs) === 0);
     $('budgetCaption').textContent = hasProjects
-      ? 'Grey is the approved budget. Navy is recorded ledger spending.'
+      ? 'Grey is the approved budget. Navy is recorded spending.'
         + (zeros.length ? ' ' + zeros.length + ' project(s) have recorded spending of 0 and are still shown.' : '')
         + ' Axis labels are rounded. The table has the exact cedis.'
       : 'No project rows to chart.';
@@ -122,7 +152,7 @@
           labels: view.projects.map((p) => p.project_id),
           datasets: [
             { label: 'Approved budget', data: view.projects.map((p) => p.approved_budget_ghs), backgroundColor: BUDGET, barPercentage: 0.9, categoryPercentage: 0.8 },
-            { label: 'Recorded ledger spending', data: view.projects.map((p) => p.ledger_cost_ghs), backgroundColor: NAVY, barPercentage: 0.9, categoryPercentage: 0.8 },
+            { label: 'Recorded spending', data: view.projects.map((p) => p.actual_cost_ghs), backgroundColor: NAVY, barPercentage: 0.9, categoryPercentage: 0.8 },
           ],
         },
         options: {
@@ -147,21 +177,25 @@
     table('budgetTable', [
       { h: 'Project', f: (r) => r.project_id + ' ' + r.project_name },
       { h: 'Approved budget', num: true, f: (r) => ghs(r.approved_budget_ghs) },
-      { h: 'Recorded spending', num: true, f: (r) => ghs(r.ledger_cost_ghs) },
-      { h: 'Remaining', num: true, f: (r) => ghs(r.remaining_ghs) },
-      { h: 'Ledger lines', num: true, f: (r) => (r.ledger_lines === undefined ? '' : String(r.ledger_lines)) },
+      { h: 'Recorded spending', num: true, f: (r) => ghs(r.actual_cost_ghs) },
+      { h: 'Remaining', num: true, f: (r) => ghs(r.remaining_budget_ghs) },
+      { h: 'Share of budget', num: true, f: (r) => (r.pct_budget_used === null || r.pct_budget_used === undefined ? '' : r.pct_budget_used.toFixed(1) + '%') },
+      { h: 'Expense lines', num: true, f: (r) => (r.expense_lines === null || r.expense_lines === undefined ? '' : String(r.expense_lines)) },
     ], view.projects);
 
     const catCanvas = $('categoryChart');
     if (view.categories && view.categories.length) {
       catCanvas.classList.remove('hidden');
       $('categoryEmpty').classList.add('hidden');
-      $('categoryCaption').textContent = (view.categoryNote ? view.categoryNote + ' ' : '') + 'Amounts are ledger spending by cost category.';
+      const unassigned = Number(DATA.unassigned_category_ghs) || 0;
+      $('categoryCaption').textContent = (view.categoryNote ? view.categoryNote + ' ' : '')
+        + 'Amounts are ledger spending by cost category.'
+        + (unassigned ? ' ' + ghs(unassigned) + ' has no cost category and is not in this chart.' : '');
       chart('categoryChart', 'Spending by cost category', {
         type: 'bar',
         data: {
           labels: view.categories.map((c) => c.category_name),
-          datasets: [{ data: view.categories.map((c) => c.amount_ghs), backgroundColor: NAVY, barPercentage: 0.72 }],
+          datasets: [{ data: view.categories.map((c) => c.actual_cost_ghs), backgroundColor: NAVY, barPercentage: 0.72 }],
         },
         options: {
           indexAxis: 'y',
@@ -185,12 +219,53 @@
     table('categoryTable', [
       { h: 'Category', k: 'category_name' },
       { h: 'Project', f: (r) => r.project_id || 'All projects' },
-      { h: 'Recorded spending', num: true, f: (r) => ghs(r.amount_ghs) },
+      { h: 'Recorded spending', num: true, f: (r) => ghs(r.actual_cost_ghs) },
+      { h: 'Expense lines', num: true, f: (r) => (r.expense_lines === null || r.expense_lines === undefined ? '' : String(r.expense_lines)) },
     ], view.categories || []);
 
+    const months = Array.isArray(DATA.monthly) ? DATA.monthly : [];
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (months.length) {
+      $('monthChart').classList.remove('hidden');
+      $('monthEmpty').classList.add('hidden');
+      chart('monthChart', 'Recorded spending by month', {
+        type: 'bar',
+        data: {
+          labels: months.map((m) => monthNames[m.month - 1] || String(m.month)),
+          datasets: [{ data: months.map((m) => m.actual_cost_ghs), backgroundColor: NAVY, barPercentage: 0.7 }],
+        },
+        options: {
+          scales: {
+            y: axisMoney(),
+            x: { grid: { display: false }, border: { display: false }, ticks: { color: TEXT } },
+          },
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ' ' + ghs(c.parsed.y) } } },
+        },
+      });
+    } else {
+      if (charts.monthChart) charts.monthChart.destroy();
+      delete charts.monthChart;
+      $('monthChart').classList.add('hidden');
+      $('monthEmpty').classList.remove('hidden');
+    }
+
+    const counts = DATA.table_counts;
+    $('countLine').textContent = counts
+      ? 'Rows: projects ' + (counts.dim_project ?? '') + ', dates ' + (counts.dim_date ?? '') + ', cost categories ' + (counts.dim_cost_category ?? '') + ', expense lines ' + (counts.fact_project_cost ?? '') + '.'
+      : 'Row counts were not in this response.';
+    const checks = DATA.quality_checks && typeof DATA.quality_checks === 'object'
+      ? Object.entries(DATA.quality_checks).map(([name, value]) => ({ name, value: String(value) }))
+      : [];
+    table('qualityTable', [
+      { h: 'Check', k: 'name' },
+      { h: 'Value', k: 'value' },
+    ], checks);
+
     const live = DATA._source === 'live';
-    $('footer').textContent = (live ? 'Live ledger figures from the hosted warehouse.' : 'Source was not marked live.')
-      + ' Refreshed ' + when(DATA.generated_at) + '. Synthetic coursework data. Recorded spending is the ledger only.';
+    $('footer').textContent = (live
+      ? 'Live figures from the warehouse function. Generated ' + when(DATA.generated_at) + '.'
+      : 'Review fixture, not a live warehouse call.')
+      + ' Synthetic coursework data. Recorded spending is fact_project_cost only.';
   }
 
   function fillFilter() {

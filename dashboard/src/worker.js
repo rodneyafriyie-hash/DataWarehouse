@@ -1,12 +1,12 @@
 // Rockshell ledger dashboard. The Supabase key stays a Worker secret.
-// The browser receives only the ledger adapter output.
+// GET /api/data calls public.rockshell_dashboard and returns the ledger fields only.
 import INDEX from './index.html';
 import APP from './app.js.txt';
 import CSS from './styles.css';
 import CHART from './chart.umd.min.js.txt';
 import ERD from './erd.png';
 import SCHEMA from './schema.svg.txt';
-import { adaptLedger, LEDGER_RPC } from './ledger_adapter.js';
+import { fetchLedger } from './ledger_adapter.js';
 
 const SEC = {
   'X-Content-Type-Options': 'nosniff',
@@ -26,19 +26,15 @@ const STATIC = {
 
 async function apiData(request, env, ctx) {
   const cache = caches.default;
-  const key = new Request(new URL('/api/data?v=ledger', request.url).toString());
+  const key = new Request(new URL('/api/data?v=ledger-rpc', request.url).toString());
   const hit = await cache.match(key);
   if (hit) return hit;
   try {
-    if (!env.SUPABASE_URL || !env.SUPABASE_KEY) throw new Error('Supabase is not configured');
-    const r = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/${LEDGER_RPC}`, {
-      method: 'POST',
-      headers: { apikey: env.SUPABASE_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: '{}',
-      signal: AbortSignal.timeout(8000),
+    const view = await fetchLedger({
+      baseUrl: env && env.SUPABASE_URL,
+      key: env && env.SUPABASE_KEY,
+      fetchImpl: fetch,
     });
-    if (!r.ok) throw new Error(`Supabase ${r.status}`);
-    const view = adaptLedger(await r.json());
     view._source = 'live';
     const resp = new Response(JSON.stringify(view), { headers: {
       'Content-Type': 'application/json; charset=utf-8',

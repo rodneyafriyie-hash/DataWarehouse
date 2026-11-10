@@ -18,7 +18,7 @@ for root, _, files in os.walk(PUB):
         assets.append({"path": rel, "hash": h, "b64": b64, "type": ctype})
 adapter = open(os.path.join(P, "functions", "api", "ledger_adapter.js")).read()
 shared = open(os.path.join(P, "functions", "api", "_shared.js")).read()
-shared = shared.replace("import { adaptLedger, LEDGER_RPC } from './ledger_adapter.js';\n", "")
+shared = shared.replace("import { fetchLedger } from './ledger_adapter.js';\n", "")
 embedded = {a["path"]: {"b64": a["b64"], "type": a["type"]} for a in assets}
 worker = adapter + "\n" + shared + f"""
 const EMBED = {json.dumps(embedded)};

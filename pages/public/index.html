@@ -6,7 +6,7 @@
 <title>Rockshell ledger</title>
 <meta name="description" content="Coursework prototype. Approved budget, recorded ledger spending, and remaining budget. Synthetic data. Not profit or percent complete.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='white' stroke='%231f3a5f'/><text x='32' y='42' font-size='32' text-anchor='middle' fill='%231f3a5f' font-family='Arial' font-weight='700'>R</text></svg>">
-<link rel="stylesheet" href="/styles.css?v=6">
+<link rel="stylesheet" href="/styles.css?v=7">
 </head>
 <body>
 <a class="skip" href="#content">Skip to the figures</a>
@@ -35,12 +35,12 @@
       <article class="card">
         <h2>Recorded spending</h2>
         <p class="figure" id="ledgerFig"></p>
-        <p class="note">Ledger lines only. Other subjects are not included.</p>
+        <p class="note" id="spendNote">fact_project_cost only. Not profit.</p>
       </article>
       <article class="card">
         <h2>Remaining budget</h2>
         <p class="figure" id="remainFig"></p>
-        <p class="note">Budget minus ledger. Not a profit figure.</p>
+        <p class="note">Budget minus recorded spending. Not a profit figure.</p>
       </article>
     </section>
     <p id="empty" class="empty hidden">The warehouse returned no projects.</p>
@@ -54,7 +54,7 @@
         <summary>Show the project figures</summary>
         <div class="table-wrap">
           <table id="budgetTable">
-            <caption>Approved budget, recorded ledger spending, and remaining budget by project, in Ghana cedis. Each project budget is counted once.</caption>
+            <caption>Approved budget, recorded spending, and remaining budget by project, in Ghana cedis. Each project budget is counted once. Share of budget is not percent complete.</caption>
           </table>
         </div>
       </details>
@@ -69,15 +69,30 @@
         <summary>Show the category figures</summary>
         <div class="table-wrap">
           <table id="categoryTable">
-            <caption>Ledger spending by cost category, in Ghana cedis.</caption>
+            <caption>Recorded spending by cost category, in Ghana cedis. Categories are for the whole ledger, not one project.</caption>
           </table>
         </div>
       </details>
     </section>
+
+    <section class="card chart-card" aria-labelledby="monthTitle">
+      <h2 id="monthTitle">Recorded spending by month</h2>
+      <p class="note" id="monthCaption">Each bar is fact_project_cost for that month in 2025.</p>
+      <div class="chart mid"><canvas id="monthChart" role="img"></canvas></div>
+      <p id="monthEmpty" class="empty hidden">Monthly spending is not in this response.</p>
+    </section>
+
+    <details class="card help">
+      <summary>Row counts and quality checks</summary>
+      <div class="help-body">
+        <p id="countLine"></p>
+        <div class="table-wrap"><table id="qualityTable"><caption>Checks returned with the ledger payload.</caption></table></div>
+      </div>
+    </details>
   </div>
 </main>
 <footer id="footer"></footer>
 <script src="/chart.js"></script>
-<script src="/app.js?v=6"></script>
+<script src="/app.js?v=7"></script>
 </body>
 </html>

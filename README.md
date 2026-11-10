@@ -49,13 +49,13 @@ Hosted database: Supabase project `kthdkdbrokrcokngnfpy`, schema `rockshell` onl
 
 Apply `01`, then `02`, then `03` on an empty schema if you are loading from scratch. Do not re-run `01` on the hosted database: it drops schema `rockshell`. Migration `04` is the only safe follow-up on the database that is already loaded. See `docs/deploy.md` before running it.
 
-The page is one responsive screen. `pages/` is Cloudflare Pages. `dashboard/` is the Worker build of the same screen. The browser calls `GET /api/data`. The server calls the existing read-only RPC with `SUPABASE_KEY` (a Cloudflare secret, not in this repo) and then keeps only ledger fields. If that call fails, the API returns an error and the page does not fill in older figures.
+The page is one responsive screen. `pages/` is Cloudflare Pages. `dashboard/` is the Worker build of the same screen. The browser calls `GET /api/data`. The server calls the existing function `public.rockshell_dashboard` with `SUPABASE_KEY` (a Cloudflare secret, not in this repo). That function already reads only `dim_project`, `dim_date`, `dim_cost_category`, and `fact_project_cost`. Schema `rockshell` stays unexposed. A direct REST read returns 406, so this page does not use one. If the call fails, the API returns an error and the page does not fill in older figures.
 
 ## What the page is showing
 
 Approved budget (once per project), recorded ledger spending, and remaining budget (budget minus ledger). Remaining is not profit and not percent complete. A project with no ledger lines stays on the page with recorded spending of 0. Cost categories appear only when the response includes them. The page does not show procurement, material usage, labour, clients, suppliers, or employees.
 
-`pages/functions/api/ledger_adapter.js` is the only place that chooses fields. `LEDGER_RPC` is still `rockshell_dashboard` until a verified contract supplies a replacement. The current function may still calculate unused subjects inside the database. Those keys are dropped before the browser sees the JSON. This change does not add a table, view, or function, and it does not grant extra database permissions.
+`pages/functions/api/ledger_adapter.js` calls that one function and maps `actual_cost_ghs`, `remaining_budget_ghs`, `expense_lines`, and `pct_budget_used`. Budget is summed once per project, including a project whose recorded spending is 0. The verified coursework load is 12 projects, 365 dates, 5 cost categories, and 400 expense lines: approved budget GH₵11,426,147.00 and recorded spending GH₵1,900,433.58. See `docs/ledger_contract.md`. This change does not add a table, view, function, or grant.
 
 The figures above for the coursework package (including GH₵11,426,147.00 budget and GH₵1,900,433.58 ledger) describe `coursework4/` and the earlier hosted load. They are not a contract for the simplified star. Do not treat them as the live page until the database change is verified.
 
