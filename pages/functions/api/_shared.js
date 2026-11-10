@@ -1,37 +1,55 @@
-// Shared logic for GET /api/data (used by the Pages Function and the generated _worker.js).
-// Calls the read-only Supabase RPC public.rockshell_dashboard() with the key from the environment
-// (Pages secret SUPABASE_KEY, var SUPABASE_URL). Live results are edge-cached for 60 s; if Supabase
-// is unreachable the built-in offline copy is returned instead.
-export async function handleData(request, env, waitUntil, snapshot) {
+// GET /api/data for the ledger dashboard.
+// Calls the existing read-only RPC with the Worker/Pages secret, then keeps
+// only dim_project budget and fact_project_cost spending. Unused subjects are
+// dropped here and are not sent to the browser. A failed call returns an error.
+// It does not substitute an older copy of the figures.
+import { adaptLedger, LEDGER_RPC } from './ledger_adapter.js';
+
+const SEC = {
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'X-Frame-Options': 'DENY',
+  'Content-Security-Policy': "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'",
+};
+
+export async function handleData(request, env, waitUntil) {
   const cache = caches.default;
-  const key = new Request(new URL('/api/data?v=cw4', request.url).toString());
+  const key = new Request(new URL('/api/data?v=ledger', request.url).toString());
   const hit = await cache.match(key);
   if (hit) return hit;
-  let body, source = 'live';
   try {
-    if (!env.SUPABASE_URL || !env.SUPABASE_KEY) throw new Error('Supabase not configured');
-    const r = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/rockshell_dashboard`, {
+    if (!env || !env.SUPABASE_URL || !env.SUPABASE_KEY) throw new Error('Supabase is not configured');
+    const r = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/${LEDGER_RPC}`, {
       method: 'POST',
       headers: { apikey: env.SUPABASE_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
       body: '{}',
       signal: AbortSignal.timeout(8000),
     });
     if (!r.ok) throw new Error(`Supabase ${r.status}`);
-    const d = await r.json();
-    if (!d || !d.projects) throw new Error('Unexpected payload');
-    d._source = 'live';
-    body = JSON.stringify(d);
+    const raw = await r.json();
+    const view = adaptLedger(raw);
+    view._source = 'live';
+    const resp = new Response(JSON.stringify(view), { headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'public, max-age=60',
+      'X-Data-Source': 'live',
+      ...SEC,
+    } });
+    if (waitUntil) waitUntil(cache.put(key, resp.clone()));
+    return resp;
   } catch (e) {
-    console.error('live fetch failed, serving offline copy:', e.message);
-    const d = typeof snapshot === 'string' ? JSON.parse(snapshot) : structuredClone(snapshot);
-    d._source = 'snapshot';
-    body = JSON.stringify(d);
-    source = 'snapshot';
+    console.error('ledger fetch failed:', e.message);
+    return new Response(JSON.stringify({
+      error: 'Live ledger figures are unavailable',
+      detail: e.message,
+    }), {
+      status: 503,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-Data-Source': 'error',
+        ...SEC,
+      },
+    });
   }
-  const resp = new Response(body, { headers: {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Cache-Control': source === 'live' ? 'public, max-age=60' : 'no-store',
-    'X-Data-Source': source, 'X-Content-Type-Options': 'nosniff' } });
-  if (source === 'live') waitUntil(cache.put(key, resp.clone()));
-  return resp;
 }

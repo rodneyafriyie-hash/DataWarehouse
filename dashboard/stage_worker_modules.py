@@ -14,7 +14,6 @@ COPIES = {
     'styles.css': 'styles.css',
     'app.js': 'app.js.txt',
     'chart.umd.min.js': 'chart.umd.min.js.txt',
-    'snapshot.json': 'snapshot.json.txt',
     'erd.png': 'erd.png',
     'schema.svg': 'schema.svg.txt',
 }

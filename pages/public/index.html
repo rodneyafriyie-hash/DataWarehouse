@@ -3,140 +3,81 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rockshell warehouse prototype</title>
-<meta name="description" content="Coursework prototype. Synthetic 2025 figures for budget, ledger spending, purchases, materials and labour. The four money subjects are not added together.">
+<title>Rockshell ledger</title>
+<meta name="description" content="Coursework prototype. Approved budget, recorded ledger spending, and remaining budget. Synthetic data. Not profit or percent complete.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='white' stroke='%231f3a5f'/><text x='32' y='42' font-size='32' text-anchor='middle' fill='%231f3a5f' font-family='Arial' font-weight='700'>R</text></svg>">
-<link rel="stylesheet" href="/styles.css?v=5">
+<link rel="stylesheet" href="/styles.css?v=6">
 </head>
 <body>
 <a class="skip" href="#content">Skip to the figures</a>
 <header class="top">
   <p class="kicker">Coursework prototype. Synthetic data. Not a live company system.</p>
-  <h1>Rockshell warehouse, 2025</h1>
-  <p class="lead">Four subjects sit side by side: approved budget against recorded ledger spending, then purchases, material cost and labour. Only the budget and the ledger are compared. Do not add the other amounts to the ledger or to each other.</p>
+  <h1>Rockshell ledger</h1>
+  <p class="lead">Approved budget is stored once on each project. Recorded spending is the ledger only (<code>fact_project_cost</code>). Remaining is that budget minus the ledger. Remaining is not profit, and it is not percent complete.</p>
 </header>
 <main id="main">
-  <p id="loading" class="loading" role="status" aria-live="polite">Loading the warehouse figures.</p>
+  <p id="loading" class="loading" role="status" aria-live="polite">Loading ledger figures.</p>
   <div id="error" class="error hidden" role="alert"></div>
   <div id="content" class="hidden">
-    <section class="metrics" aria-label="Headline figures">
-      <article class="card pair">
-        <div>
-          <h2>Approved budget</h2>
-          <p class="figure" id="budgetFig"></p>
-          <p class="note" id="budgetNote"></p>
-        </div>
-        <div>
-          <h2>Recorded spending</h2>
-          <p class="figure" id="ledgerFig"></p>
-          <p class="note" id="ledgerNote"></p>
-        </div>
+    <div class="filterbar">
+      <label for="projectFilter">Project</label>
+      <select id="projectFilter">
+        <option value="">All projects</option>
+      </select>
+    </div>
+    <p id="incomplete" class="note hidden"></p>
+    <section class="metrics" aria-label="Ledger figures">
+      <article class="card">
+        <h2>Approved budget</h2>
+        <p class="figure" id="budgetFig"></p>
+        <p class="note" id="budgetNote"></p>
       </article>
       <article class="card">
-        <h2>Purchases</h2>
-        <p class="figure" id="buyFig"></p>
-        <p class="note">fact_procurement. Not added to the ledger.</p>
+        <h2>Recorded spending</h2>
+        <p class="figure" id="ledgerFig"></p>
+        <p class="note">Ledger lines only. Other subjects are not included.</p>
       </article>
       <article class="card">
-        <h2>Material cost</h2>
-        <p class="figure" id="matFig"></p>
-        <p class="note" id="matNote">fact_material_usage. Cost in cedis only.</p>
-      </article>
-      <article class="card">
-        <h2>Labour</h2>
-        <p class="figure" id="labFig"></p>
-        <p class="note" id="labNote">fact_labor. Not added to the ledger.</p>
+        <h2>Remaining budget</h2>
+        <p class="figure" id="remainFig"></p>
+        <p class="note">Budget minus ledger. Not a profit figure.</p>
       </article>
     </section>
+    <p id="empty" class="empty hidden">The warehouse returned no projects.</p>
 
     <section class="card chart-card" aria-labelledby="budgetTitle">
-      <h2 id="budgetTitle"></h2>
+      <h2 id="budgetTitle">Approved budget and recorded spending by project</h2>
       <p class="note" id="budgetCaption"></p>
       <p class="keyline"><span class="swatch budget"></span>Approved budget <span class="swatch spent"></span>Recorded ledger spending</p>
       <div class="chart tall"><canvas id="budgetChart" role="img"></canvas></div>
-      <p id="budgetEmpty" class="empty hidden">No project rows were returned.</p>
       <details>
-        <summary>Show the 12 project figures</summary>
-        <div class="table-wrap"><table id="budgetTable"><caption>Approved budget and recorded ledger spending by project, in Ghana cedis.</caption></table></div>
+        <summary>Show the project figures</summary>
+        <div class="table-wrap">
+          <table id="budgetTable">
+            <caption>Approved budget, recorded ledger spending, and remaining budget by project, in Ghana cedis. Each project budget is counted once.</caption>
+          </table>
+        </div>
       </details>
     </section>
 
-    <div class="split">
-      <section class="card chart-card" aria-labelledby="buyTitle">
-        <h2 id="buyTitle">Purchases by supplier</h2>
-        <p class="note" id="buyCaption"></p>
-        <div class="chart mid"><canvas id="buyChart" role="img"></canvas></div>
-        <p id="buyEmpty" class="empty hidden">No purchase rows were returned.</p>
-        <details>
-          <summary>Show every supplier</summary>
-          <div class="table-wrap"><table id="buyTable"><caption>Purchase cost by supplier, in Ghana cedis. This is not ledger spending.</caption></table></div>
-        </details>
-      </section>
-      <section class="card chart-card" aria-labelledby="labTitle">
-        <h2 id="labTitle">Labour by project</h2>
-        <p class="note" id="labCaption"></p>
-        <div class="chart mid"><canvas id="labChart" role="img"></canvas></div>
-        <p id="labEmpty" class="empty hidden">No labour rows were returned.</p>
-        <details>
-          <summary>Show hours and cost for every project</summary>
-          <div class="table-wrap"><table id="labTable"><caption>Labour hours and labour cost by project. Hours and cedis are separate units.</caption></table></div>
-        </details>
-      </section>
-    </div>
-
-    <section class="card chart-card" aria-labelledby="matTitle">
-      <h2 id="matTitle">Material cost by material</h2>
-      <p class="note" id="matCaption"></p>
-      <div class="chart materials"><canvas id="matChart" role="img"></canvas></div>
-      <p id="matEmpty" class="empty hidden">No material rows were returned.</p>
+    <section class="card chart-card" aria-labelledby="categoryTitle">
+      <h2 id="categoryTitle">Spending by cost category</h2>
+      <p class="note" id="categoryCaption"></p>
+      <div class="chart mid"><canvas id="categoryChart" role="img"></canvas></div>
+      <p id="categoryEmpty" class="empty hidden"></p>
       <details>
-        <summary>Show cost, quantity and unit</summary>
-        <div class="table-wrap"><table id="matTable"><caption>Material usage cost in Ghana cedis. Quantity stays with its own unit and is not totalled.</caption></table></div>
+        <summary>Show the category figures</summary>
+        <div class="table-wrap">
+          <table id="categoryTable">
+            <caption>Ledger spending by cost category, in Ghana cedis.</caption>
+          </table>
+        </div>
       </details>
     </section>
   </div>
-
-  <details class="card help" id="help">
-    <summary>How this warehouse is organised (optional)</summary>
-    <div class="help-body">
-      <p>This is a fact constellation, also called a galaxy: four fact tables share seven dimension tables. It is the Coursework 4 design. An earlier single-star model is kept in the repository under archive/star_v1 and is not what this page shows.</p>
-      <div class="table-wrap">
-        <table>
-          <caption>Which dimensions each fact uses</caption>
-          <thead>
-            <tr>
-              <th scope="col">Fact (one row is)</th>
-              <th scope="col">Rows</th>
-              <th scope="col">date</th>
-              <th scope="col">project</th>
-              <th scope="col">client</th>
-              <th scope="col">supplier</th>
-              <th scope="col">material</th>
-              <th scope="col">cost category</th>
-              <th scope="col">employee</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><th scope="row">fact_project_cost, one ledger transaction</th><td>400</td><td>Yes</td><td>Yes</td><td>Through project</td><td></td><td></td><td>Yes</td><td></td></tr>
-            <tr><th scope="row">fact_procurement, one purchase line</th><td>600</td><td>Yes</td><td>Yes</td><td>Through project</td><td>Yes</td><td>Yes</td><td></td><td></td></tr>
-            <tr><th scope="row">fact_material_usage, one site usage entry</th><td>700</td><td>Yes</td><td>Yes</td><td>Through project</td><td></td><td>Yes</td><td></td><td></td></tr>
-            <tr><th scope="row">fact_labor, one employee on one project-day</th><td>900</td><td>Yes</td><td>Yes</td><td>Through project</td><td></td><td></td><td></td><td>Yes</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <img src="/schema.svg" alt="Diagram of seven dimension tables and four fact tables. Client links only to project. A note says the four money subjects are not added together.">
-      <h3>Where the numbers come from</h3>
-      <p>The same synthetic CSV files can be loaded on a laptop with Python and SQLite (<code>coursework4/build_warehouse.py</code>) or into PostgreSQL (<code>supabase/migrations</code>). This page reads the hosted PostgreSQL copy through one read-only function, <code>public.rockshell_dashboard()</code>. The browser never sees the database key.</p>
-      <h3>Load and checks</h3>
-      <p id="etlIntro">The check table fills in when the warehouse responds.</p>
-      <div class="table-wrap"><table id="etlTable"></table></div>
-      <p id="checkLine"></p>
-      <div class="table-wrap"><table id="rejectTable"></table></div>
-    </div>
-  </details>
 </main>
 <footer id="footer"></footer>
 <script src="/chart.js"></script>
-<script src="/app.js?v=5"></script>
+<script src="/app.js?v=6"></script>
 </body>
 </html>

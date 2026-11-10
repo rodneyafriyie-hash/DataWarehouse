@@ -45,6 +45,18 @@ h1 { margin: 0 0 8px; font-size: 1.8rem; font-weight: 650; letter-spacing: -0.02
 h2 { margin: 0 0 6px; font-size: 1.05rem; font-weight: 650; }
 h3 { margin: 18px 0 6px; font-size: 1rem; }
 .hidden { display: none !important; }
+.filterbar { display: flex; align-items: center; gap: 12px; margin: 18px 0 8px; }
+.filterbar label { font-weight: 650; }
+.filterbar select {
+  min-height: 44px;
+  min-width: 220px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
 .metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

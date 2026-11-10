@@ -2,9 +2,11 @@
 
 Coursework prototype. All company-like rows are **synthetic**. This is not a production system for Rockshell International Ltd. The repository does not include a Power BI report.
 
-The design is a **fact constellation** (a galaxy): 4 fact tables share 7 dimension tables. An earlier single-star model is in `archive/star_v1/` and is not deployed.
+The hosted page is being aligned to a smaller star: `dim_project`, `dim_date`, `dim_cost_category`, and `fact_project_cost`. Counts for that simplified database are not verified here. A separate change is updating the database. This repository change does not run SQL.
 
-![Four facts and seven dimensions](docs/schema.svg)
+The coursework package in `coursework4/` is still the earlier galaxy (4 facts and 7 dimensions). An older single-star model is in `archive/star_v1/`. Neither folder is edited by the ledger page.
+
+![Coursework 4 galaxy, kept with the package](docs/schema.svg)
 
 Live page (hosted prototype, same Cloudflare project `rockshell-dw`):
 
@@ -47,29 +49,15 @@ Hosted database: Supabase project `kthdkdbrokrcokngnfpy`, schema `rockshell` onl
 
 Apply `01`, then `02`, then `03` on an empty schema if you are loading from scratch. Do not re-run `01` on the hosted database: it drops schema `rockshell`. Migration `04` is the only safe follow-up on the database that is already loaded. See `docs/deploy.md` before running it.
 
-The page is one responsive screen. `pages/` is Cloudflare Pages. `dashboard/` is the Worker build of the same screen. The browser calls `GET /api/data`. The Worker or Pages Function calls the read-only RPC with `SUPABASE_KEY`, which is a Cloudflare secret and is not in this repo. If the warehouse does not respond, the function serves `pages/functions/_snapshot.json` and the footer says so.
+The page is one responsive screen. `pages/` is Cloudflare Pages. `dashboard/` is the Worker build of the same screen. The browser calls `GET /api/data`. The server calls the existing read-only RPC with `SUPABASE_KEY` (a Cloudflare secret, not in this repo) and then keeps only ledger fields. If that call fails, the API returns an error and the page does not fill in older figures.
 
 ## What the page is showing
 
-Only the approved budget and the ledger (`fact_project_cost`) are compared. Purchases, material cost and labour stay in their own cards and charts.
+Approved budget (once per project), recorded ledger spending, and remaining budget (budget minus ledger). Remaining is not profit and not percent complete. A project with no ledger lines stays on the page with recorded spending of 0. Cost categories appear only when the response includes them. The page does not show procurement, material usage, labour, clients, suppliers, or employees.
 
-| Subject | Verified total | Table |
-|---|---|---|
-| Approved budget | GH₵11,426,147.00 | dim_project |
-| Recorded spending | GH₵1,900,433.58 | fact_project_cost |
-| Purchases | GH₵5,814,700.47 | fact_procurement |
-| Material cost | GH₵2,144,371.38 | fact_material_usage |
-| Labour | GH₵273,827.18 and 4,945 hours | fact_labor |
+`pages/functions/api/ledger_adapter.js` is the only place that chooses fields. `LEDGER_RPC` is still `rockshell_dashboard` until a verified contract supplies a replacement. The current function may still calculate unused subjects inside the database. Those keys are dropped before the browser sees the JSON. This change does not add a table, view, or function, and it does not grant extra database permissions.
 
-Material quantities use different units, so the page never adds them into one quantity. The full column list, grains and rejection rules are in `docs/data_dictionary.md`.
-
-Largest ledger amount: P009 at GH₵217,339.21. Largest share of a project's own budget: P005 at 77.5%. No project is over budget. Top three ledger rows match `coursework4/outputs/project_cost_report.csv`:
-
-- P009: 777,461.00 budget, 217,339.21 ledger, 560,121.79 left
-- P003: 1,450,763.00 / 212,453.18 / 1,238,309.82
-- P005: 255,315.00 / 197,866.56 / 57,448.44
-
-`rockshell.v_validation` compares 13 expected values with the live tables (13 of 13 PASS on the hosted copy).
+The figures above for the coursework package (including GH₵11,426,147.00 budget and GH₵1,900,433.58 ledger) describe `coursework4/` and the earlier hosted load. They are not a contract for the simplified star. Do not treat them as the live page until the database change is verified.
 
 ## Security
 
@@ -84,7 +72,7 @@ Largest ledger amount: P009 at GH₵217,339.21. Largest share of a project's own
 python pages/test_contract.py
 ```
 
-That checks the SQLite totals, the snapshot JSON, and that the page source does not add the four money subjects. The browser check is `pages/test_dashboard.mjs` (see the top of that file). It needs Chrome and `puppeteer-core`, which are not project dependencies.
+That runs `pages/test_ledger_adapter.mjs` (synthetic fixtures: budget counted once, a zero-spend project kept, missing amounts not turned into zero, unused subjects dropped) and checks the page source. The browser check is `pages/test_dashboard.mjs`. It needs Chrome and `puppeteer-core`, which are not project dependencies. Its amounts are fixtures, not the hosted warehouse.
 
 ## Deploy
 

@@ -2,6 +2,8 @@
 
 Short facts only. The Office documents are edited separately. Do not describe Power BI as part of this repository. It is not implemented here.
 
+The web page in git now shows only the ledger star (project budget, recorded spending, remaining budget, and cost category when the response includes it). It does not display procurement, material usage, labour, clients, suppliers, or employees. Simplified row counts are not verified yet. The bullets below still describe the coursework4 galaxy package.
+
 - Prototype, synthetic data, calendar year 2025. Not a production system and not a login system.
 - Design in force: galaxy / fact constellation. Exactly 4 facts (`fact_project_cost`, `fact_procurement`, `fact_material_usage`, `fact_labor`) and 7 dimensions (`dim_date`, `dim_project`, `dim_client`, `dim_supplier`, `dim_material`, `dim_cost_category`, `dim_employee`).
 - Client is reached through project. There is no snowflake beyond that.

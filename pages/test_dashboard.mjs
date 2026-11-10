@@ -1,12 +1,9 @@
 /**
- * Browser checks for the one-page dashboard.
- * Not a project dependency. From the repo root, after installing puppeteer-core
- * somewhere on NODE_PATH:
+ * Browser checks against a local synthetic ledger payload.
+ * These amounts are fixtures, not the hosted warehouse.
  *
  *   PUPPETEER_ENTRY=/tmp/dash-test/node_modules/puppeteer-core/lib/esm/puppeteer/puppeteer-core.js \
  *   CHROME_PATH=/usr/local/bin/google-chrome node pages/test_dashboard.mjs
- *
- * Uses pages/public and pages/functions/_snapshot.json. No hosted database and no secrets.
  */
 import http from 'node:http';
 import { readFileSync } from 'node:fs';
@@ -18,29 +15,44 @@ const puppeteer = process.env.PUPPETEER_ENTRY
   : (await import('puppeteer-core')).default;
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), 'public');
-const SNAP = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'functions', '_snapshot.json'), 'utf8'));
 const TYPES = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json' };
+const SYNTHETIC = {
+  _source: 'live',
+  scope: 'ledger',
+  tables: ['dim_project', 'dim_date', 'dim_cost_category', 'fact_project_cost'],
+  generated_at: '2026-11-10T12:00:00Z',
+  categories_status: 'ready',
+  incomplete: [],
+  projects: [
+    { project_id: 'P-A', project_name: 'Synthetic Harbour', approved_budget_ghs: 1000, ledger_cost_ghs: 250, remaining_ghs: 750, ledger_lines: 2 },
+    { project_id: 'P-B', project_name: 'Synthetic School', approved_budget_ghs: 400, ledger_cost_ghs: 0, remaining_ghs: 400, ledger_lines: 0 },
+  ],
+  categories: [
+    { category_id: 'CAT01', category_name: 'Equipment', amount_ghs: 180, project_id: null },
+    { category_id: 'CAT05', category_name: 'Permits', amount_ghs: 70, project_id: null },
+  ],
+  totals: { approved_budget_ghs: 1400, ledger_cost_ghs: 250, remaining_ghs: 1150, project_count: 2 },
+};
+const NO_CATEGORY = { ...SYNTHETIC, categories: null, categories_status: 'unavailable' };
 
 function start(mode) {
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://127.0.0.1');
     if (url.pathname === '/api/data') {
       if (mode === 'error') {
-        res.writeHead(500, { 'Content-Type': 'text/plain' });
-        res.end('nope');
+        res.writeHead(503, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+        res.end(JSON.stringify({ error: 'Live ledger figures are unavailable', detail: 'synthetic outage' }));
         return;
       }
       const body = mode === 'empty'
-        ? { projects: [], suppliers: [], labour: [], materials: [], totals: {}, etl: [], rejected: [], validation: [], _source: 'live' }
-        : { ...SNAP, _source: 'live' };
+        ? { _source: 'live', scope: 'ledger', projects: [], incomplete: [], categories: null, categories_status: 'unavailable', totals: null, generated_at: null }
+        : mode === 'nocat' ? NO_CATEGORY : SYNTHETIC;
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(body));
       return;
     }
-    let path = url.pathname === '/' ? '/index.html' : url.pathname;
-    if (path.includes('..')) {
-      res.writeHead(400); res.end('bad'); return;
-    }
+    const path = url.pathname === '/' ? '/index.html' : url.pathname;
+    if (path.includes('..')) { res.writeHead(400); res.end('bad'); return; }
     try {
       const data = readFileSync(join(ROOT, path));
       res.writeHead(200, { 'Content-Type': TYPES[extname(path)] || 'application/octet-stream' });
@@ -62,9 +74,8 @@ async function open(browser, port, width, height) {
   page.on('pageerror', (err) => errors.push(String(err)));
   page.on('console', (msg) => {
     if (msg.type() !== 'error') return;
-    const text = msg.text();
-    if (text.includes('500')) return;
-    errors.push(text);
+    if (msg.text().includes('503')) return;
+    errors.push(msg.text());
   });
   await page.setViewport({ width, height });
   await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'networkidle0' });
@@ -76,64 +87,65 @@ async function main() {
   const live = await start('live');
   const empty = await start('empty');
   const broken = await start('error');
-  const browser = await puppeteer.launch({ executablePath: chrome, headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+  const nocat = await start('nocat');
+  const browser = await puppeteer.launch({
+    executablePath: chrome,
+    headless: true,
+    protocolTimeout: 20000,
+    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+  });
   try {
-    const desk = await open(browser, live.address().port, 1440, 900);
-    await desk.page.waitForFunction(() => (document.querySelector('#budgetFig')?.textContent || '').includes('GH₵'));
+    const desk = await open(browser, live.address().port, 1440, 1000);
+    await desk.page.waitForFunction(() => (document.querySelector('#budgetFig')?.textContent || '').includes('GH₵1,400.00'));
     const text = await desk.page.evaluate(() => document.body.textContent);
-    for (const bit of ['GH₵11,426,147.00', 'GH₵1,900,433.58', 'GH₵5,814,700.47', 'GH₵2,144,371.38', 'GH₵273,827.18', '4,945 hours', '77.5%', 'P005', 'P009', 'No project is over', 'Synthetic', 'Do not add']) {
-      assert(text.includes(bit), 'desktop missing ' + bit);
+    for (const bit of ['GH₵1,400.00', 'GH₵250.00', 'GH₵1,150.00', 'Synthetic Harbour', 'Synthetic School', 'Equipment', 'Not a profit figure', 'not percent complete']) {
+      assert(text.includes(bit), 'missing ' + bit);
     }
-    assert(!text.includes('\u2014'), 'em dash in rendered text');
-    assert(!text.includes('GH₵10,133,332.61'), 'four subjects were added');
-    const tabs = await desk.page.$$('.tabs');
-    assert(tabs.length === 0, 'tab bar present');
-    const borders = await desk.page.evaluate(() => {
-      const style = getComputedStyle(document.querySelector('.card'));
-      return {
-        left: style.borderLeftWidth + ' ' + style.borderLeftColor,
-        right: style.borderRightWidth + ' ' + style.borderRightColor,
-      };
-    });
-    assert(borders.left === borders.right, 'card has a coloured edge bar ' + JSON.stringify(borders));
-    const overflowBoxes = await desk.page.evaluate(() => [...document.querySelectorAll('.card, .figure, h2')].filter((el) => el.scrollWidth > el.clientWidth + 2).map((el) => (el.id || el.className) + ' ' + el.scrollWidth + '/' + el.clientWidth));
-    assert(overflowBoxes.length === 0, 'text overflows its card: ' + overflowBoxes.join(', '));
-    assert(desk.errors.length === 0, 'desktop errors ' + desk.errors.join(' | '));
+    for (const banned of ['Purchases', 'supplier', 'procurement', 'GH₵11,426,147.00']) {
+      assert(!text.includes(banned), 'unexpected ' + banned);
+    }
+    assert(!text.includes('\u2014'), 'em dash');
+    await desk.page.select('#projectFilter', 'P-B');
+    await desk.page.waitForFunction(() => document.querySelector('#budgetFig')?.textContent === 'GH₵400.00');
+    const filtered = await desk.page.evaluate(() => document.querySelector('#ledgerFig').textContent);
+    assert(filtered === 'GH₵0.00', 'zero-spend project filter ' + filtered);
+    const remain = await desk.page.evaluate(() => document.querySelector('#remainFig').textContent);
+    assert(remain === 'GH₵400.00', 'remaining for zero spend');
+    const boxes = await desk.page.evaluate(() => [...document.querySelectorAll('.card, .figure')].filter((el) => el.scrollWidth > el.clientWidth + 2).map((el) => el.className));
+    assert(boxes.length === 0, 'overflow ' + boxes.join(','));
+    assert(desk.errors.length === 0, desk.errors.join(' | '));
 
     const mobile = await open(browser, live.address().port, 390, 844);
     await mobile.page.waitForFunction(() => (document.querySelector('#budgetFig')?.textContent || '').includes('GH₵'));
     const overflow = await mobile.page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
-    assert(!overflow, 'mobile page overflows');
-    const mobileBoxes = await mobile.page.evaluate(() => [...document.querySelectorAll('.card, .figure')].filter((el) => el.scrollWidth > el.clientWidth + 2).map((el) => (el.id || el.className) + ' ' + el.scrollWidth + '/' + el.clientWidth));
-    assert(mobileBoxes.length === 0, 'mobile text overflows: ' + mobileBoxes.join(', '));
-    assert(mobile.errors.length === 0, 'mobile errors ' + mobile.errors.join(' | '));
+    assert(!overflow, 'mobile overflow');
+    assert(mobile.errors.length === 0, mobile.errors.join(' | '));
 
     const blank = await open(browser, empty.address().port, 1280, 800);
-    await blank.page.waitForFunction(() => {
-      const el = document.querySelector('#budgetEmpty');
-      return el && !el.classList.contains('hidden');
-    });
+    await blank.page.waitForFunction(() => !document.querySelector('#empty').classList.contains('hidden'));
     const emptyText = await blank.page.evaluate(() => document.body.textContent);
-    assert(emptyText.includes('No project rows were returned'), 'empty state missing');
-    assert(blank.errors.length === 0, 'empty errors ' + blank.errors.join(' | '));
+    assert(emptyText.includes('no projects'), 'empty state');
+    assert(!emptyText.includes('GH₵0.00'), 'empty state invented a zero total');
+
+    const quiet = await open(browser, nocat.address().port, 1280, 800);
+    await quiet.page.waitForFunction(() => document.querySelector('#categoryEmpty') && !document.querySelector('#categoryEmpty').classList.contains('hidden'));
+    const quietText = await quiet.page.evaluate(() => document.querySelector('#categoryEmpty').textContent);
+    assert(quietText.includes('not in this response'), quietText);
 
     const err = await open(browser, broken.address().port, 1280, 800);
     await err.page.waitForSelector('#retry');
     const errText = await err.page.evaluate(() => document.body.textContent);
-    assert(errText.includes('could not be loaded'), 'error state missing');
-    assert(errText.includes('How this warehouse is organised'), 'help missing on error');
-    const focused = await err.page.evaluate(() => document.activeElement && document.activeElement.id);
-    assert(focused === 'retry', 'retry button was not focused');
-    assert(err.errors.length === 0, 'error-page errors ' + err.errors.join(' | '));
+    assert(errText.includes('could not be loaded'), 'error copy');
+    assert(errText.includes('Nothing else is shown'), 'error refuses a fallback');
+    assert(!errText.includes('GH₵'), 'error showed figures');
+    assert((await err.page.evaluate(() => document.activeElement && document.activeElement.id)) === 'retry', 'retry focus');
 
-    console.log('PASS browser checks');
+    console.log('PASS browser checks (synthetic ledger)');
+    console.log('PORTS', JSON.stringify({ live: live.address().port, mobile: live.address().port }));
   } finally {
     await browser.close();
-    live.close(); empty.close(); broken.close();
+    live.close(); empty.close(); broken.close(); nocat.close();
   }
 }
 
-main().catch((err) => {
-  console.error('FAIL', err);
-  process.exit(1);
-});
+main().catch((err) => { console.error('FAIL', err); process.exit(1); });

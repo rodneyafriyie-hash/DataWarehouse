@@ -16,11 +16,11 @@ for root, _, files in os.walk(PUB):
         ctype = mimetypes.guess_type(f)[0] or "application/octet-stream"
         if f.endswith(".js"): ctype = "application/javascript"
         assets.append({"path": rel, "hash": h, "b64": b64, "type": ctype})
+adapter = open(os.path.join(P, "functions", "api", "ledger_adapter.js")).read()
 shared = open(os.path.join(P, "functions", "api", "_shared.js")).read()
-snap = open(os.path.join(P, "functions", "_snapshot.json")).read()
+shared = shared.replace("import { adaptLedger, LEDGER_RPC } from './ledger_adapter.js';\n", "")
 embedded = {a["path"]: {"b64": a["b64"], "type": a["type"]} for a in assets}
-worker = shared + f"""
-const SNAPSHOT = {snap};
+worker = adapter + "\n" + shared + f"""
 const EMBED = {json.dumps(embedded)};
 const SEC = {{ 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'X-Frame-Options': 'DENY',
   'Content-Security-Policy': "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'" }};
@@ -38,7 +38,7 @@ export default {{
     const url = new URL(request.url);
     if (url.pathname === '/api/data') {{
       if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method not allowed', {{ status: 405 }});
-      return handleData(request, env, (p) => ctx.waitUntil(p), SNAPSHOT);
+      return handleData(request, env, (p) => ctx.waitUntil(p));
     }}
     const e = serveEmbedded(url.pathname);
     if (e) return e;

@@ -1,6 +1,8 @@
 # Data dictionary (Coursework 4 galaxy)
 
-Synthetic coursework prototype for Rockshell International Ltd. These tables are the warehouse. They are not a production system, and this repository does not include a Power BI report.
+This file describes the coursework4 galaxy package. The hosted dashboard is moving to four tables only (`dim_project`, `dim_date`, `dim_cost_category`, `fact_project_cost`). Column names and row counts for that simpler star are not verified in this file.
+
+Synthetic coursework prototype for Rockshell International Ltd. These tables are not a production system, and this repository does not include a Power BI report.
 
 The shape is a fact constellation: **4 fact tables** and **7 dimension tables**. Client is a dimension, but facts do not point at client directly. They point at project, and project points at client.
 
