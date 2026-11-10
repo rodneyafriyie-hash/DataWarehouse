@@ -107,8 +107,18 @@ async function main() {
       assert(!text.includes(banned), 'unexpected ' + banned);
     }
     assert(!text.includes('\u2014'), 'em dash');
+    assert(text.includes('Category and month totals cover all projects'), 'all-projects label');
+    const kinds = await desk.page.evaluate(() => ({
+      bars: Chart.getChart('budgetChart').config.type,
+      axis: Chart.getChart('budgetChart').options.indexAxis,
+      pie: Chart.getChart('categoryChart').config.type,
+    }));
+    assert(kinds.bars === 'bar' && kinds.axis === 'y', 'budget chart is not a horizontal bar');
+    assert(kinds.pie === 'doughnut', 'category chart is not a doughnut');
     await desk.page.select('#projectFilter', 'P005');
     await desk.page.waitForFunction(() => (document.querySelector('#ledgerFig')?.textContent || '') === 'GH₵197,866.56');
+    const scope = await desk.page.evaluate(() => document.querySelector('#scopeNote').textContent);
+    assert(scope.includes('all projects') && scope.includes('only the summary'), 'filter scope note: ' + scope);
     const boxes = await desk.page.evaluate(() => [...document.querySelectorAll('.card, .figure')].filter((el) => el.scrollWidth > el.clientWidth + 2).map((el) => el.className));
     assert(boxes.length === 0, 'overflow ' + boxes.join(','));
     assert(desk.errors.length === 0, desk.errors.join(' | '));

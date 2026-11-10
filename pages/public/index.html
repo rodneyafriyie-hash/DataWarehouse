@@ -4,16 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rockshell ledger</title>
-<meta name="description" content="Coursework prototype. Approved budget, recorded ledger spending, and remaining budget. Synthetic data. Not profit or percent complete.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='white' stroke='%231f3a5f'/><text x='32' y='42' font-size='32' text-anchor='middle' fill='%231f3a5f' font-family='Arial' font-weight='700'>R</text></svg>">
-<link rel="stylesheet" href="/styles.css?v=7">
+<meta name="description" content="Coursework prototype. Approved budget and recorded spending from the project ledger. Synthetic data. Not profit or percent complete.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23fbf9f6' stroke='%23243e5c'/><text x='32' y='42' font-size='28' text-anchor='middle' fill='%23243e5c' font-family='Arial' font-weight='700'>R</text></svg>">
+<link rel="stylesheet" href="/styles.css?v=8">
 </head>
 <body>
 <a class="skip" href="#content">Skip to the figures</a>
 <header class="top">
-  <p class="kicker">Coursework prototype. Synthetic data. Not a live company system.</p>
+  <p class="kicker">Coursework prototype. Synthetic data.</p>
   <h1>Rockshell ledger</h1>
-  <p class="lead">Approved budget is stored once on each project. Recorded spending is the ledger only (<code>fact_project_cost</code>). Remaining is that budget minus the ledger. Remaining is not profit, and it is not percent complete.</p>
+  <p class="lead">Recorded spending is <code>fact_project_cost</code> only. Remaining is budget minus that spending. Not a profit figure, and not percent complete.</p>
 </header>
 <main id="main">
   <p id="loading" class="loading" role="status" aria-live="polite">Loading ledger figures.</p>
@@ -25,6 +25,7 @@
         <option value="">All projects</option>
       </select>
     </div>
+    <p id="scopeNote" class="scope">Category and month totals cover all projects.</p>
     <p id="incomplete" class="note hidden"></p>
     <section class="metrics" aria-label="Ledger figures">
       <article class="card">
@@ -35,64 +36,63 @@
       <article class="card">
         <h2>Recorded spending</h2>
         <p class="figure" id="ledgerFig"></p>
-        <p class="note" id="spendNote">fact_project_cost only. Not profit.</p>
+        <p class="note" id="spendNote">fact_project_cost only.</p>
       </article>
       <article class="card">
         <h2>Remaining budget</h2>
         <p class="figure" id="remainFig"></p>
-        <p class="note">Budget minus recorded spending. Not a profit figure.</p>
+        <p class="note">Not a profit figure.</p>
       </article>
     </section>
     <p id="empty" class="empty hidden">The warehouse returned no projects.</p>
 
     <section class="card chart-card" aria-labelledby="budgetTitle">
-      <h2 id="budgetTitle">Approved budget and recorded spending by project</h2>
+      <h2 id="budgetTitle">Budget and recorded spending</h2>
+      <p class="keyline"><span class="swatch budget"></span>Approved budget <span class="swatch spent"></span>Recorded spending</p>
       <p class="note" id="budgetCaption"></p>
-      <p class="keyline"><span class="swatch budget"></span>Approved budget <span class="swatch spent"></span>Recorded ledger spending</p>
       <div class="chart tall"><canvas id="budgetChart" role="img"></canvas></div>
       <details>
-        <summary>Show the project figures</summary>
+        <summary>Project figures</summary>
         <div class="table-wrap">
           <table id="budgetTable">
-            <caption>Approved budget, recorded spending, and remaining budget by project, in Ghana cedis. Each project budget is counted once. Share of budget is not percent complete.</caption>
+            <caption>Approved budget, recorded spending, and remaining budget by project, in Ghana cedis. Each budget is counted once. Share of budget is not percent complete.</caption>
           </table>
         </div>
       </details>
     </section>
 
-    <section class="card chart-card" aria-labelledby="categoryTitle">
-      <h2 id="categoryTitle">Spending by cost category</h2>
-      <p class="note" id="categoryCaption"></p>
-      <div class="chart mid"><canvas id="categoryChart" role="img"></canvas></div>
-      <p id="categoryEmpty" class="empty hidden"></p>
-      <details>
-        <summary>Show the category figures</summary>
-        <div class="table-wrap">
-          <table id="categoryTable">
-            <caption>Recorded spending by cost category, in Ghana cedis. Categories are for the whole ledger, not one project.</caption>
-          </table>
-        </div>
-      </details>
-    </section>
-
-    <section class="card chart-card" aria-labelledby="monthTitle">
-      <h2 id="monthTitle">Recorded spending by month</h2>
-      <p class="note" id="monthCaption">Each bar is fact_project_cost for that month in 2025.</p>
-      <div class="chart mid"><canvas id="monthChart" role="img"></canvas></div>
-      <p id="monthEmpty" class="empty hidden">Monthly spending is not in this response.</p>
-    </section>
+    <div class="split">
+      <section class="card chart-card" aria-labelledby="categoryTitle">
+        <h2 id="categoryTitle">Cost categories</h2>
+        <p class="note" id="categoryCaption"></p>
+        <div class="chart ring"><canvas id="categoryChart" role="img"></canvas></div>
+        <p id="categoryEmpty" class="empty hidden"></p>
+        <details>
+          <summary>Category figures</summary>
+          <div class="table-wrap">
+            <table id="categoryTable">
+              <caption>Recorded spending by cost category, in Ghana cedis, for all projects.</caption>
+            </table>
+          </div>
+        </details>
+      </section>
+      <section class="card chart-card" aria-labelledby="monthTitle">
+        <h2 id="monthTitle">By month</h2>
+        <p class="note" id="monthCaption"></p>
+        <div class="chart mid"><canvas id="monthChart" role="img"></canvas></div>
+        <p id="monthEmpty" class="empty hidden">Monthly spending is not in this response.</p>
+      </section>
+    </div>
 
     <details class="card help">
-      <summary>Row counts and quality checks</summary>
-      <div class="help-body">
-        <p id="countLine"></p>
-        <div class="table-wrap"><table id="qualityTable"><caption>Checks returned with the ledger payload.</caption></table></div>
-      </div>
+      <summary>Row counts and checks</summary>
+      <p id="countLine" class="note"></p>
+      <div class="table-wrap"><table id="qualityTable"><caption>Checks returned with the ledger.</caption></table></div>
     </details>
   </div>
 </main>
 <footer id="footer"></footer>
 <script src="/chart.js"></script>
-<script src="/app.js?v=7"></script>
+<script src="/app.js?v=8"></script>
 </body>
 </html>

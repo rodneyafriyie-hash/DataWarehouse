@@ -1,10 +1,11 @@
 /* Rockshell ledger dashboard. Reads GET /api/data (already limited to the ledger star).
    Synthetic coursework page. Does not invent figures when the response is empty or failed. */
 (() => {
-  const NAVY = '#1f3a5f';
-  const BUDGET = '#c5ccd6';
+  const NAVY = '#243e5c';
+  const BUDGET = '#d9d3c8';
   const TEXT = '#1c2430';
-  const MUTED = '#5c6570';
+  const MUTED = '#5a5348';
+  const SLICES = ['#243e5c', '#6e8eab', '#8d6b45', '#5f7d62', '#c4a574'];
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let charts = {};
   let DATA = null;
@@ -52,16 +53,38 @@
     };
   }
 
+  const spendLabels = {
+    id: 'spendLabels',
+    afterDatasetsDraw(chart) {
+      if (chart.config.type !== 'bar' || chart.options.indexAxis !== 'y') return;
+      const { ctx } = chart;
+      const meta = chart.getDatasetMeta(1);
+      if (!meta) return;
+      ctx.save();
+      ctx.font = '600 12px "Segoe UI", system-ui, sans-serif';
+      ctx.fillStyle = TEXT;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'left';
+      meta.data.forEach((el, i) => {
+        const value = chart.data.datasets[1].data[i];
+        ctx.fillText(ghs(value), el.x + 8, el.y);
+      });
+      ctx.restore();
+    },
+  };
+
   function chart(id, label, cfg) {
     const canvas = $(id);
     canvas.setAttribute('aria-label', label);
     if (charts[id]) charts[id].destroy();
+    const legend = (cfg.options && cfg.options.plugins && cfg.options.plugins.legend) || { display: false };
     cfg.options = Object.assign({
       responsive: true,
       maintainAspectRatio: false,
-      animation: { duration: reduce ? 0 : 300 },
-      plugins: { legend: { display: false } },
+      animation: { duration: reduce ? 0 : 280 },
     }, cfg.options || {});
+    cfg.options.plugins = Object.assign({}, cfg.options.plugins, { legend });
+    cfg.plugins = [spendLabels];
     charts[id] = new Chart(canvas, cfg);
   }
 
@@ -116,6 +139,10 @@
 
   function render() {
     const view = selection();
+    const filtered = $('projectFilter').value;
+    $('scopeNote').textContent = filtered
+      ? 'Category and month totals cover all projects. This menu changes only the summary and the project bars.'
+      : 'Category and month totals cover all projects.';
     const incomplete = Array.isArray(DATA.incomplete) ? DATA.incomplete : [];
     $('incomplete').classList.toggle('hidden', incomplete.length === 0);
     $('incomplete').textContent = incomplete.length
@@ -134,15 +161,13 @@
       ? view.projects.length + (view.projects.length === 1 ? ' project. Counted once.' : ' projects. Each budget is counted once.')
       : '';
     $('spendNote').textContent = hasProjects
-      ? 'fact_project_cost only. ' + share + ' of the approved budget. Not percent complete.'
+      ? share + ' of the approved budget. Not percent complete.'
       : 'fact_project_cost only.';
 
     const zeros = view.projects.filter((p) => Number(p.actual_cost_ghs) === 0);
-    $('budgetCaption').textContent = hasProjects
-      ? 'Grey is the approved budget. Navy is recorded spending.'
-        + (zeros.length ? ' ' + zeros.length + ' project(s) have recorded spending of 0 and are still shown.' : '')
-        + ' Axis labels are rounded. The table has the exact cedis.'
-      : 'No project rows to chart.';
+    $('budgetCaption').textContent = zeros.length
+      ? zeros.length + ' project(s) have recorded spending of 0 and stay on the chart.'
+      : '';
     const canvas = $('budgetChart');
     if (hasProjects) {
       canvas.classList.remove('hidden');
@@ -157,13 +182,22 @@
         },
         options: {
           indexAxis: 'y',
+          layout: { padding: { right: 132 } },
           scales: {
             x: axisMoney(),
-            y: { grid: { display: false }, border: { display: false }, ticks: { color: TEXT, font: { size: 13, weight: '600' } } },
+            y: { grid: { display: false }, border: { display: false }, ticks: { color: TEXT, font: { size: 13, weight: '650' } } },
           },
           plugins: {
             legend: { display: false },
-            tooltip: { callbacks: { label: (c) => ' ' + c.dataset.label + ': ' + ghs(c.parsed.x) } },
+            tooltip: {
+              callbacks: {
+                title: (items) => {
+                  const row = view.projects[items[0].dataIndex];
+                  return row.project_id + ' ' + row.project_name;
+                },
+                label: (c) => ' ' + c.dataset.label + ': ' + ghs(c.parsed.x),
+              },
+            },
           },
         },
       });
@@ -188,22 +222,47 @@
       catCanvas.classList.remove('hidden');
       $('categoryEmpty').classList.add('hidden');
       const unassigned = Number(DATA.unassigned_category_ghs) || 0;
-      $('categoryCaption').textContent = (view.categoryNote ? view.categoryNote + ' ' : '')
-        + 'Amounts are ledger spending by cost category.'
+      $('categoryCaption').textContent = 'All projects.'
         + (unassigned ? ' ' + ghs(unassigned) + ' has no cost category and is not in this chart.' : '');
-      chart('categoryChart', 'Spending by cost category', {
-        type: 'bar',
+      const colors = view.categories.map((_, i) => SLICES[i % SLICES.length]);
+      chart('categoryChart', 'Spending by cost category, all projects', {
+        type: 'doughnut',
         data: {
           labels: view.categories.map((c) => c.category_name),
-          datasets: [{ data: view.categories.map((c) => c.actual_cost_ghs), backgroundColor: NAVY, barPercentage: 0.72 }],
+          datasets: [{
+            data: view.categories.map((c) => c.actual_cost_ghs),
+            backgroundColor: colors,
+            borderColor: '#f7f3ed',
+            borderWidth: 3,
+            hoverOffset: 4,
+          }],
         },
         options: {
-          indexAxis: 'y',
-          scales: {
-            x: axisMoney(),
-            y: { grid: { display: false }, border: { display: false }, ticks: { color: TEXT, font: { size: 12 } } },
+          cutout: '58%',
+          plugins: {
+            legend: {
+              display: true,
+              position: window.innerWidth < 700 ? 'bottom' : 'right',
+              labels: {
+                color: TEXT,
+                boxWidth: 12,
+                padding: 12,
+                font: { size: 13 },
+                generateLabels(chart) {
+                  const data = chart.data;
+                  return data.labels.map((label, i) => ({
+                    text: label + '  ' + ghs(data.datasets[0].data[i]),
+                    fillStyle: data.datasets[0].backgroundColor[i],
+                    strokeStyle: '#f7f3ed',
+                    lineWidth: 1,
+                    hidden: false,
+                    index: i,
+                  }));
+                },
+              },
+            },
+            tooltip: { callbacks: { label: (c) => ' ' + ghs(c.parsed) } },
           },
-          plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ' ' + ghs(c.parsed.x) } } },
         },
       });
     } else {
@@ -214,7 +273,7 @@
       $('categoryEmpty').textContent = DATA.categories_status === 'ready'
         ? 'No category rows for this selection.'
         : 'Cost category spending is not in this response yet.';
-      $('categoryCaption').textContent = 'The page will show category bars when the ledger response includes them. No stand-in figures are used.';
+      $('categoryCaption').textContent = 'Cost categories are not in this response.';
     }
     table('categoryTable', [
       { h: 'Category', k: 'category_name' },
@@ -225,6 +284,7 @@
 
     const months = Array.isArray(DATA.monthly) ? DATA.monthly : [];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    $('monthCaption').textContent = 'All projects.';
     if (months.length) {
       $('monthChart').classList.remove('hidden');
       $('monthEmpty').classList.add('hidden');
